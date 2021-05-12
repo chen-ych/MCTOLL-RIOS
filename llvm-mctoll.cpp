@@ -83,6 +83,7 @@
 #include <unordered_map>
 #include <utility>
 #include <vector>
+#include <iostream>
 
 using namespace llvm;
 using namespace object;
@@ -357,13 +358,17 @@ static const Target *getTarget(const ObjectFile *Obj = nullptr) {
     if (Obj) {
       auto Arch = Obj->getArch();
       TheTriple.setArch(Triple::ArchType(Arch));
-
+      
       // For ARM targets, try to use the build attributes to build determine
       // the build target. Target features are also added, but later during
       // disassembly.
       if (Arch == Triple::arm || Arch == Triple::armeb) {
         Obj->setARMSubArch(TheTriple);
       }
+
+      // if (Arch == Triple::riscv32) {
+      //   Obj->setRISCVSubArch(TheTriple);
+      // }
 
       // TheTriple defaults to ELF, and COFF doesn't have an environment:
       // the best we can do here is indicate that it is mach-o.
@@ -388,9 +393,12 @@ static const Target *getTarget(const ObjectFile *Obj = nullptr) {
   }
 
   // Get the target specific parser.
+  // LLVM_DEBUG(dbgs() << "::" << TheTriple.getTriple() << "\n");
+  LLVM_DEBUG(dbgs() << "::" << TheTriple.getTriple() << "\n");
   std::string Error;
   const Target *TheTarget =
       TargetRegistry::lookupTarget(ArchName, TheTriple, Error);
+  LLVM_DEBUG(dbgs() << "::" << Error << "\n");
   if (!TheTarget) {
     if (Obj)
       report_error(Obj->getFileName(), "Support for raising " +
@@ -822,8 +830,8 @@ static void DisassembleObject(const ObjectFile *Obj, bool InlineRelocs) {
   if (StartAddress > StopAddress)
     error("Start address should be less than stop address");
 
+  // const Target *TheTarget = MCContext(Obj);
   const Target *TheTarget = getTarget(Obj);
-
   // Package up features to be passed to target/subtarget
   SubtargetFeatures Features = Obj->getFeatures();
   if (MAttrs.size()) {
@@ -1154,11 +1162,12 @@ static void DisassembleObject(const ObjectFile *Obj, bool InlineRelocs) {
             continue;
         }
 
+        // LLVM_DEBUG(dbgs() << "check::" << SymStr << "\n");
         // If Symbol is in the ELFCRTSymbol list return this is a symbol of a
         // function we are not interested in disassembling and raising.
         if (ELFCRTSymbols.find(SymStr) != ELFCRTSymbols.end())
           continue;
-
+        // LLVM_DEBUG(dbgs() << "pass::" << SymStr << "\n");
         // Note that since LLVM infrastructure was built to be used to build a
         // conventional compiler pipeline, MachineFunction is built well after
         // Function object was created and populated fully. Hence, creation of
@@ -1516,7 +1525,7 @@ static void DumpInput(StringRef file) {
   }
 
   // Attempt to open the binary.
-  Expected<OwningBinary<Binary>> BinaryOrErr = createBinary(file);
+  Expected<OwningBinary<Binary>> BinaryOrErr = createBinary(file); // cycnote: many llvm-tool all have this setence, Even DumpInput s are similar
   if (!BinaryOrErr)
     report_error(BinaryOrErr.takeError(), file);
   Binary &Binary = *BinaryOrErr.get().getBinary();
@@ -1534,9 +1543,13 @@ static void DumpInput(StringRef file) {
         errs() << "Raising x64 relocatable (.o) x64 binaries not supported\n";
         exit(1);
       }
-    } else if (o->getArch() == Triple::arm)
+    } else if (o->getArch() == Triple::arm){
       DumpObject(o);
-    else {
+    } else if (o->getArch() == Triple::riscv32){
+      LLVM_DEBUG(dbgs() << "riscv32 start.\n");
+      DumpObject(o);
+    } else {
+      errs() << o->getArch();
       errs() << "No support to raise Binaries other than x64 and ARM\n";
       exit(1);
     }
@@ -1546,6 +1559,7 @@ static void DumpInput(StringRef file) {
 
 int main(int argc, char **argv) {
   // Print a stack trace if we signal out.
+  cout << "hello cyc" << endl;
   sys::PrintStackTraceOnErrorSignal(argv[0]);
   PrettyStackTraceProgram X(argc, argv);
   llvm_shutdown_obj Y; // Call llvm_shutdown() on exit.

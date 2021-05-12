@@ -13,7 +13,8 @@
 
 #include "RISCV32ModuleRaiser.h"
 #include "llvm/Object/ELFObjectFile.h"
-
+#include "llvm/Support/Debug.h"
+#define DEBUG_TYPE "mctoll"
 using namespace llvm;
 
 namespace RaiserContext {
@@ -36,6 +37,7 @@ bool RISCV32ModuleRaiser::collectDynamicRelocations() {
 
   return true;
 }
+
 
 #ifdef __cplusplus
 extern "C" {

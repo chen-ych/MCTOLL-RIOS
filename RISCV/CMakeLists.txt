@@ -12,6 +12,8 @@ llvm_add_library(RISCVRaiser STATIC
   RISCVModuleRaiser.cpp
   RISCV32ModuleRaiser.cpp
   RISCV32MachineInstructionRaiser.cpp
+  RISCV32FunctionPrototype.cpp
+  RISCV32MIRevising.cpp
   RISCV64MachineInstructionRaiser.cpp
   RISCV64ModuleRaiser.cpp
   RISCVCallingConvention.cpp

@@ -15,17 +15,20 @@
 #define LLVM_TOOLS_LLVM_MCTOLL_RISCV32_RISCV32MODULERAISER_H
 
 #include "ModuleRaiser.h"
-
+#include "MachineFunctionRaiser.h"
 using namespace llvm;
 
 class RISCV32ModuleRaiser : public ModuleRaiser {
 public:
+  static bool classof(const ModuleRaiser *mr) {
+    return mr->getArch() == Triple::riscv32;
+  }
   RISCV32ModuleRaiser() : ModuleRaiser() { Arch = Triple::riscv32; };
 
   MachineFunctionRaiser *
   CreateAndAddMachineFunctionRaiser(Function *F, const ModuleRaiser *MR,
-                                    uint64_t Start, uint64_t End);
-  bool collectDynamicRelocations();
+                                    uint64_t Start, uint64_t End) override;
+  bool collectDynamicRelocations() override;
 };
 
 #endif // LLVM_TOOLS_LLVM_MCTOLL_RISCV32_RISCV32MODULERAISER_H

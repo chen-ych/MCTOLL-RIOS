@@ -95,6 +95,8 @@ bool ModuleRaiser::runMachineFunctionPasses() {
   // the current module.
   // Iterate the MachineFunctions twice to determine the prototypes of functions
   // that might call those whose prototypes were not yet constructed.
+
+  // why raise function twice time here?
   bool AllPrototypesConstructed;
   const int IterCount = 2;
   for (int i = 0; i < IterCount; i++) {
@@ -118,6 +120,7 @@ bool ModuleRaiser::runMachineFunctionPasses() {
   }
   assert(AllPrototypesConstructed && "Failed to construct all prototypes");
   // Run instruction raiser passes.
+  
   for (auto MFR : mfRaiserVector)
     Success |= MFR->runRaiserPasses();
 

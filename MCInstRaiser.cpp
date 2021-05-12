@@ -14,7 +14,11 @@
 #include "llvm/Support/raw_ostream.h"
 
 #define DEBUG_TYPE "mctoll"
-
+// CYCNOTE:: Current we got MCInst, buildCFG will transform MCInst into MachineInstr
+// MCInst: is very close to assembly, it seems one MCInst is mapped to one original isa
+// assembly
+// MachineInstr: have basic block with their linkage info, and it's form is close to 
+// isa specific assembly.
 void MCInstRaiser::buildCFG(MachineFunction &MF, const MCInstrAnalysis *MIA,
                             const MCInstrInfo *MII) {
   // Set the first instruction index as the entry of current MBB

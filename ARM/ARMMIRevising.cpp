@@ -518,7 +518,7 @@ void ARMMIRevising::decodeModImmOperand(MachineInstr &MInst) {
   case ARM::ORRri:
     MachineOperand &mo = MInst.getOperand(2);
     unsigned Bits = mo.getImm() & 0xFF;
-    unsigned Rot = (mo.getImm() & 0xF00) >> 7;
+    unsigned Rot = (mo.getImm() & 0xF00) >> 8;
     int64_t Rotated = static_cast<int64_t>(ARM_AM::rotr32(Bits, Rot));
     mo.setImm(Rotated);
     break;
@@ -574,7 +574,6 @@ bool ARMMIRevising::revise() {
         rtn = reviseMI(*mii);
     }
   }
-
   for (MachineInstr *PMI : RMVec)
     PMI->eraseFromParent();
 
