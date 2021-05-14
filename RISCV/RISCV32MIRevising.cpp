@@ -79,6 +79,14 @@ uint64_t getLoadAlignProgramHeader(const ELFFile<ELFT> *Obj) {
 /// Create function for external function.
 uint64_t RISCV32MIRevising::getCalledFunctionAtPLTOffset(uint64_t PLTEndOff,
                                                      uint64_t CallAddr) {
+  return 0;
+  // To do : fix plt table
+
+  // For arm 
+  /*    10290:       e28fc600        add     ip, pc, #0, 12
+        10294:       e28cca10        add     ip, ip, #16, 20 ; 0x10000
+        10298:       e5bcf348        ldr     pc, [ip, #840]! ; 0x348
+  */
   // const ELF32LEObjectFile *Elf32LEObjFile =
   //     dyn_cast<ELF32LEObjectFile>(MR->getObjectFile());
   // assert(Elf32LEObjFile != nullptr &&
@@ -118,7 +126,7 @@ uint64_t RISCV32MIRevising::getCalledFunctionAtPLTOffset(uint64_t PLTEndOff,
   //     unsigned int OpcAddIP = InstAddIP.getOpcode();
   //     MCInstrDesc MCIDAddIP = MR->getMCInstrInfo()->get(OpcAddIP);
 
-  //     if (OpcAddIP != RISCV32::ADDri && (MCIDAddIP.getNumOperands() != 6)) {
+  //     if (OpcAddIP != RISCV::ADD && (MCIDAddIP.getNumOperands() != 6)) {
   //       assert(false && "Failed to find function entry from .plt.");
   //     }
 
@@ -184,7 +192,7 @@ uint64_t RISCV32MIRevising::getCalledFunctionAtPLTOffset(uint64_t PLTEndOff,
 
 /// Relocate call branch instructions in object files.
 void RISCV32MIRevising::relocateBranch(MachineInstr &MInst) {
-  int64_t relCallTargetOffset = MInst.getOperand(0).getImm();
+  int64_t relCallTargetOffset = MInst.getOperand(1).getImm();
   const ELF32LEObjectFile *Elf32LEObjFile =
       dyn_cast<ELF32LEObjectFile>(MR->getObjectFile());
   assert(Elf32LEObjFile != nullptr &&
@@ -199,7 +207,7 @@ void RISCV32MIRevising::relocateBranch(MachineInstr &MInst) {
     // and instruction size
     int64_t MCInstOffset = getMCInstIndex(MInst);
     int64_t CallAddr = MCInstOffset + textSectionAddress;
-    int64_t CallTargetIndex = CallAddr + relCallTargetOffset + 8;
+    int64_t CallTargetIndex = CallAddr + relCallTargetOffset;
     assert(MCIR != nullptr && "MCInstRaiser was not initialized");
     int64_t CallTargetOffset = CallTargetIndex - textSectionAddress;
     if (CallTargetOffset < 0 || !MCIR->isMCInstInRange(CallTargetOffset)) {
@@ -217,27 +225,28 @@ void RISCV32MIRevising::relocateBranch(MachineInstr &MInst) {
 
       if (CalledFunc == nullptr) {
         if (Index == 0)
-          MInst.getOperand(0).setImm(CallTargetIndex);
+          MInst.getOperand(1).setImm(CallTargetIndex);
         else if (Index != 1)
-          MInst.getOperand(0).setImm(Index);
+          MInst.getOperand(1).setImm(Index);
         else
           assert(false && "Failed to get the call function!");
       } else
-        MInst.getOperand(0).setImm(CallTargetIndex);
+        MInst.getOperand(1).setImm(CallTargetIndex);
+    } else if(MCIR->isMCInstInRange(CallTargetOffset)){
+      MInst.getOperand(1).setImm(CallTargetIndex);
     }
   } else {
     uint64_t Offset = getMCInstIndex(MInst);
     const RelocationRef *reloc = MR->getTextRelocAtOffset(Offset, 4);
     auto ImmValOrErr = (*reloc->getSymbol()).getValue();
     assert(ImmValOrErr && "Failed to get immediate value");
-    MInst.getOperand(0).setImm(*ImmValOrErr);
+    MInst.getOperand(1).setImm(*ImmValOrErr);
   }
 }
 
 /// Find global value by PC offset.
 const Value *RISCV32MIRevising::getGlobalValueByOffset(int64_t MCInstOffset,
                                                    uint64_t PCOffset) {
-  return nullptr;
   // const Value *GlobVal = nullptr;
   // const ELF32LEObjectFile *ObjFile =
   //     dyn_cast<ELF32LEObjectFile>(MR->getObjectFile());
@@ -456,60 +465,60 @@ const Value *RISCV32MIRevising::getGlobalValueByOffset(int64_t MCInstOffset,
   // return GlobVal;
 }
 
+/*
 /// Address PC relative data in function, and create corresponding global value.
 void RISCV32MIRevising::addressPCRelativeData(MachineInstr &MInst) {
-  return ;
-  // const Value *GlobVal = nullptr;
-  // int64_t Imm = 0;
-  // // To match the pattern: OPCODE Rx, [PC, #IMM]
-  // if (MInst.getNumOperands() > 2) {
-  //   assert(MInst.getOperand(2).isImm() &&
-  //          "The third operand must be immediate data!");
-  //   Imm = MInst.getOperand(2).getImm();
-  // }
-  // // Get MCInst offset - the offset of machine instruction in the binary
-  // // and instruction size
-  // int64_t MCInstOffset = getMCInstIndex(MInst);
-  // GlobVal =
-  //     getGlobalValueByOffset(MCInstOffset, static_cast<uint64_t>(Imm) + 8);
+  const Value *GlobVal = nullptr;
+  int64_t Imm = 0;
+  // To match the pattern: OPCODE Rx, [PC, #IMM]
+  if (MInst.getNumOperands() > 2) {
+    assert(MInst.getOperand(2).isImm() &&
+           "The third operand must be immediate data!");
+    Imm = MInst.getOperand(2).getImm();
+  }
+  // Get MCInst offset - the offset of machine instruction in the binary
+  // and instruction size
+  int64_t MCInstOffset = getMCInstIndex(MInst);
+  GlobVal = getGlobalValueByOffset(MCInstOffset, static_cast<uint64_t>(Imm) + 8);
 
-  // // Check the next instruction whether it is also related to PC relative data
-  // // of global variable.
-  // // It should like:
-  // // ldr     r1, [pc, #32]
-  // // ldr     r1, [pc, r1]
-  // MachineInstr *NInst = MInst.getNextNode();
-  // // To match the pattern: OPCODE Rx, [PC, Rd], Rd must be the def of previous
-  // // instruction.
-  // if (NInst->getNumOperands() >= 2 && NInst->getOperand(1).isReg() &&
-  //     NInst->getOperand(1).getReg() == RISCV32::PC &&
-  //     NInst->getOperand(2).isReg() &&
-  //     NInst->getOperand(2).getReg() == MInst.getOperand(0).getReg()) {
-  //   auto GV = dyn_cast<GlobalVariable>(GlobVal);
-  //   if (GV != nullptr && GV->isConstant()) {
-  //     // Firstly, read the PC relative data according to PC offset.
-  //     auto Init = GV->getInitializer();
-  //     uint64_t GVData = Init->getUniqueInteger().getZExtValue();
-  //     int64_t MCInstOff = getMCInstIndex(*NInst);
-  //     // Search the global symbol of object by PC relative data.
-  //     GlobVal = getGlobalValueByOffset(MCInstOff, GVData + 8);
-  //     // If the global symbol is exist, erase current ldr instruction.
-  //     if (GlobVal != nullptr)
-  //       NInst->eraseFromParent();
-  //   }
-  // }
+  // Check the next instruction whether it is also related to PC relative data
+  // of global variable.
+  // It should like:
+  // ldr     r1, [pc, #32]
+  // ldr     r1, [pc, r1]
+  MachineInstr *NInst = MInst.getNextNode();
+  // To match the pattern: OPCODE Rx, [PC, Rd], Rd must be the def of previous
+  // instruction.
+  if (NInst->getNumOperands() >= 2 && NInst->getOperand(1).isReg() &&
+      NInst->getOperand(1).getReg() == RISCV::PC &&
+      NInst->getOperand(2).isReg() &&
+      NInst->getOperand(2).getReg() == MInst.getOperand(0).getReg()) {
+    auto GV = dyn_cast<GlobalVariable>(GlobVal);
+    if (GV != nullptr && GV->isConstant()) {
+      // Firstly, read the PC relative data according to PC offset.
+      auto Init = GV->getInitializer();
+      uint64_t GVData = Init->getUniqueInteger().getZExtValue();
+      int64_t MCInstOff = getMCInstIndex(*NInst);
+      // Search the global symbol of object by PC relative data.
+      GlobVal = getGlobalValueByOffset(MCInstOff, GVData + 8);
+      // If the global symbol is exist, erase current ldr instruction.
+      if (GlobVal != nullptr)
+        NInst->eraseFromParent();
+    }
+  }
 
-  // assert(GlobVal && "A not addressed pc-relative data!");
+  assert(GlobVal && "A not addressed pc-relative data!");
 
-  // // Replace PC relative operands to symbol operand.
-  // // The pattern will be generated.
-  // // ldr r3, [pc, #20] => ldr r3, @globalvalue
-  // MInst.getOperand(1).ChangeToES(GlobVal->getName().data());
+  // Replace PC relative operands to symbol operand.
+  // The pattern will be generated.
+  // ldr r3, [pc, #20] => ldr r3, @globalvalue
+  MInst.getOperand(1).ChangeToES(GlobVal->getName().data());
 
-  // if (MInst.getNumOperands() > 2) {
-  //   MInst.RemoveOperand(2);
-  // }
+  if (MInst.getNumOperands() > 2) {
+    MInst.RemoveOperand(2);
+  }
 }
+*/
 
 // /// Decode modified immediate constants in some instructions with immediate
 // /// operand.
@@ -544,19 +553,31 @@ bool RISCV32MIRevising::reviseMI(MachineInstr &MInst) {
   // no orr in riscv
   // decodeModImmOperand(MInst);
   // Relocate BL target in same section.
-  if (MInst.getOpcode() == RISCV32::BL || MInst.getOpcode() == RISCV32::BL_pred ||
-      MInst.getOpcode() == RISCV32::Bcc) {
-    MachineOperand &mo0 = MInst.getOperand(0);
-    if (mo0.isImm())
-      relocateBranch(MInst);
-  }
 
-  if (MInst.getOpcode() == RISCV32::LDRi12 || MInst.getOpcode() == RISCV32::STRi12) {
-    if (MInst.getNumOperands() >= 2 && MInst.getOperand(1).isReg() &&
-        MInst.getOperand(1).getReg() == RISCV32::PC) {
-      addressPCRelativeData(MInst);
+  
+  
+  // LLVM_DEBUG(dbgs() << MInst.getOpcode() << "\n");
+  // LLVM_DEBUG(dbgs() << RISCV::JAL << "\n");
+
+  // To do : add other branch target function: jalr, beq, bne, bge, blt, bltu, begu
+  // To do : fix plt function
+
+  // jal rd(operand0), target(operand1)
+  // j target -> jal x0(operand0), target(operand1)
+  if (MInst.getOpcode() == RISCV::JAL) {
+    MachineOperand &mo1 = MInst.getOperand(1);
+    if (mo1.isImm()){
+      LLVM_DEBUG(dbgs() << MInst << "\n");
+      relocateBranch(MInst);
     }
   }
+
+  // if (MInst.getOpcode() == RISCV32::LDRi12 || MInst.getOpcode() == RISCV32:: ) {
+  //   if (MInst.getNumOperands() >= 2 && MInst.getOperand(1).isReg() &&
+  //       MInst.getOperand(1).getReg() == ARM::PC) {
+  //     addressPCRelativeData(MInst);
+  //   }
+  // }
 
   return true;
 }

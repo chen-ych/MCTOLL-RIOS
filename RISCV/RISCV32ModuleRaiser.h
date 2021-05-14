@@ -28,7 +28,22 @@ public:
   MachineFunctionRaiser *
   CreateAndAddMachineFunctionRaiser(Function *F, const ModuleRaiser *MR,
                                     uint64_t Start, uint64_t End) override;
+
+   // Method to map syscall.
+  void setSyscallMapping(uint64_t idx, Function *fn) { SyscallMap[idx] = fn; }
+  
+  void fillInstAddrFuncMap(uint64_t callAddr, Function *func) {
+    InstAddrFuncMap[callAddr] = func;
+  }
+
   bool collectDynamicRelocations() override;
+private:
+  // Commonly used data structures for ARM.
+  // This is for call instruction. (BL instruction)
+  DenseMap<uint64_t, Function *> InstAddrFuncMap;
+
+  // Map index to its corresponding function.
+  std::map<uint64_t, Function *> SyscallMap;
 };
 
 #endif // LLVM_TOOLS_LLVM_MCTOLL_RISCV32_RISCV32MODULERAISER_H

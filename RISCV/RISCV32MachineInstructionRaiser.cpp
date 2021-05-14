@@ -4,6 +4,8 @@
 #include "RISCV32FunctionPrototype.h"
 #include "RISCV32MachineInstructionRaiser.h"
 #include "RISCV32MIRevising.h"
+#include "RISCV32EliminatePrologEpilog.h"
+#include "RISCV32CreateJumpTable.h"
 #include "MachineInstructionRaiser.h"
 #include "llvm-mctoll.h"
 
@@ -42,15 +44,15 @@ bool RISCV32MachineInstructionRaiser::raiseMachineFunction() {
   mir.setMCInstRaiser(mcInstRaiser);
   mir.revise();
   
-  // RISCV32EliminatePrologEpilog epe(rmr);
-  // epe.init(&MF, raisedFunction);
-  // epe.eliminate();
+  RISCV32EliminatePrologEpilog epe(rmr);
+  epe.init(&MF, raisedFunction);
+  epe.eliminate();
 
-  // RISCV32CreateJumpTable cjt(rmr);
-  // cjt.init(&MF, raisedFunction);
-  // cjt.setMCInstRaiser(mcInstRaiser);
-  // cjt.create();
-  // cjt.getJTlist(jtList);
+  RISCV32CreateJumpTable cjt(rmr);
+  cjt.init(&MF, raisedFunction);
+  cjt.setMCInstRaiser(mcInstRaiser);
+  cjt.create();
+  cjt.getJTlist(jtList);
 
   // RISCV32ArgumentRaiser ar(rmr);
   // ar.init(&MF, raisedFunction);
