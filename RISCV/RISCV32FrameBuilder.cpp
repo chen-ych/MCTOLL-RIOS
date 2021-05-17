@@ -33,79 +33,69 @@ void RISCV32FrameBuilder::init(MachineFunction *mf, Function *rf) {
 }
 
 static bool isLoadOP(unsigned opcode) {
-  // switch (opcode) {
-  // default:
-  //   return false;
-  // case RISCV32::LDRi12:
-  // case RISCV32::LDRH:
-  // case RISCV32::LDRSH:
-  // case RISCV32::LDRBi12:
-  //   return true;
-  // }
-  return true;
+  switch (opcode) {
+  default:
+    return false;
+  case RISCV::LW:
+    return true;
+  }
 }
 
 static bool isStoreOP(unsigned opcode) {
-  // switch (opcode) {
-  // default:
-  //   return false;
-  // case RISCV32::STRi12:
-  // case RISCV32::STRH:
-  // case RISCV32::STRBi12:
-  //   return true;
-  // }
-  return true;
+  switch (opcode) {
+  default:
+    return false;
+  case RISCV::SW:
+    return true;
+  }
 }
 
 static bool isAddOP(unsigned opcode) {
-  // switch (opcode) {
-  // default:
-  //   return false;
-  // case RISCV32::ADDri:
-  //   return true;
-  // }
-  return true;
+  switch (opcode) {
+  default:
+    return false;
+  case RISCV::ADDI:
+    return true;
+  }
 }
 
 static inline bool isHalfwordOP(unsigned Opcode) {
   bool Res = false;
-  // switch (Opcode) {
-  // default:
-  //   Res = false;
-  //   break;
-  // case RISCV32::STRH:
-  // case RISCV32::LDRH:
-  // case RISCV32::LDRSH:
-  //   Res = true;
-  //   break;
-  // }
+  switch (Opcode) {
+  default:
+    Res = false;
+    break;
+  case RISCV::SH:
+  case RISCV::LH:
+    Res = true;
+    break;
+  }
   return Res;
 }
 
 unsigned RISCV32FrameBuilder::getBitCount(unsigned opcode) {
   unsigned ret;
 
-  // switch (opcode) {
-  // default:
-  //   ret = Log2(DLT->getStackAlignment());
-  //   break;
-  // case RISCV32::LDRi12:
-  // case RISCV32::STRi12:
-  //   ret = 4;
-  //   break;
-  // case RISCV32::LDRBi12:
-  // case RISCV32::STRBi12:
-  //   ret = 1;
-  //   break;
-  // case RISCV32::STRH:
-  // case RISCV32::LDRH:
-  // case RISCV32::LDRSH:
-  //   ret = 2;
-  //   break;
-  // case RISCV32::ADDri:
-  //   ret = 4;
-  //   break;
-  // }
+  switch (opcode) {
+  default:
+    ret = Log2(DLT->getStackAlignment());
+    break;
+  case RISCV::LW:
+  case RISCV::SW:
+    ret = 4;
+    break;
+  case RISCV::LB:
+  case RISCV::SB:
+    ret = 1;
+    break;
+  case RISCV::SH:
+  case RISCV::LH:
+    ret = 2;
+    break;
+  case RISCV::ADDI:
+    ret = 4;
+    break;
+  }
 
   return ret;
 }
@@ -175,40 +165,43 @@ bool RISCV32FrameBuilder::replaceNonSPBySP(MachineInstr &mi) {
 
 /// Analyze frame index of stack operands.
 /// Some patterns like:
-/// ldr r3, [sp, #12]
-/// str r4, [fp, #-8]
-/// add r0, sp, #imm
+/// lw  a5, 12(sp)
+/// sw  a1, -40(s0)
+/// add r0, sp, #imm 
+/// To fix: current not support add r0, sp, #imm instruction
 int64_t RISCV32FrameBuilder::identifyStackOp(const MachineInstr &mi) {
-  // unsigned opc = mi.getOpcode();
-  // if (!isLoadOP(opc) && !isStoreOP(opc) && !isAddOP(opc))
-  //   return -1;
+  unsigned opc = mi.getOpcode();
+  if (!isLoadOP(opc) && !isStoreOP(opc))
+    return -1;
 
-  // if (mi.getNumOperands() < 3)
-  //   return -1;
+  if (mi.getNumOperands() < 3)
+    return -1;
 
-  // int64_t offset = -1;
-  // const MachineOperand &mo = mi.getOperand(1);
+  int64_t offset = -1;
+  const MachineOperand &mo = mi.getOperand(1);
 
-  // if (!mo.isReg())
-  //   return -1;
+  if (!mo.isReg())
+    return -1;
 
+  // To fix: current not support half word
   // if (isHalfwordOP(opc))
   //   offset = mi.getOperand(3).getImm();
   // else
-  //   offset = mi.getOperand(2).getImm();
+  offset = mi.getOperand(2).getImm();
 
-  // if (mo.getReg() == RISCV32::SP && offset >= 0)
-  //   return offset;
 
-  // if (mo.getReg() == RISCV32::R11) {
-  //   if (offset > 0) {
-  //     if (isHalfwordOP(opc))
-  //       offset = 0 - static_cast<int64_t>(static_cast<int8_t>(offset));
-  //     else
-  //       return -1;
-  //   }
-  //   return MFI->getStackSize() + offset + MFI->getOffsetAdjustment();
-  // }
+  if (mo.getReg() == RISCV::X2 && offset >= 0)
+    return offset;
+
+  if (mo.getReg() == RISCV::X8) {
+    // if (offset > 0) {
+    //   if (isHalfwordOP(opc))
+    //     offset = 0 - static_cast<int64_t>(static_cast<int8_t>(offset));
+    //   else
+    //     return -1;
+    // }
+    return MFI->getStackSize() + offset + MFI->getOffsetAdjustment();
+  }
 
   return -1;
 }
@@ -280,9 +273,9 @@ void RISCV32FrameBuilder::searchStackObjects(MachineFunction &mf) {
     StackElement *pse = msi->second;
     pmi->getOperand(1).ChangeToFrameIndex(pse->ObjectIndex);
     unsigned opc = pmi->getOpcode();
-    if (isHalfwordOP(opc)) {
-      pmi->RemoveOperand(3);
-    }
+    // if (isHalfwordOP(opc)) {
+    //   pmi->RemoveOperand(3);
+    // }
     pmi->RemoveOperand(2);
   }
 
