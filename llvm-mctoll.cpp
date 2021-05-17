@@ -1017,6 +1017,7 @@ static void DisassembleObject(const ObjectFile *Obj, bool InlineRelocs) {
     std::vector<uint64_t> TextMappingSymsAddr;
     if (isArmElf(Obj)) {
       for (const auto &Symb : Symbols) {
+        LLVM_DEBUG(dbgs() << Symb.Name << "\n");
         uint64_t Address = Symb.Addr;
         StringRef Name = Symb.Name;
         if (Name.startswith("$d"))
@@ -1141,6 +1142,8 @@ static void DisassembleObject(const ObjectFile *Obj, bool InlineRelocs) {
         }
       }
 
+      LLVM_DEBUG(dbgs() << "\n encap1 \n");
+      LLVM_DEBUG(dbgs() << Symbols[si].Name << "\n");
       if (isAFunctionSymbol(Obj, Symbols[si])) {
         auto &SymStr = Symbols[si].Name;
 
@@ -1162,12 +1165,12 @@ static void DisassembleObject(const ObjectFile *Obj, bool InlineRelocs) {
             continue;
         }
 
-        // LLVM_DEBUG(dbgs() << "check::" << SymStr << "\n");
+        LLVM_DEBUG(dbgs() << "check::" << SymStr << "\n");
         // If Symbol is in the ELFCRTSymbol list return this is a symbol of a
         // function we are not interested in disassembling and raising.
         if (ELFCRTSymbols.find(SymStr) != ELFCRTSymbols.end())
           continue;
-        // LLVM_DEBUG(dbgs() << "pass::" << SymStr << "\n");
+        LLVM_DEBUG(dbgs() << "pass::" << SymStr << "\n");
         // Note that since LLVM infrastructure was built to be used to build a
         // conventional compiler pipeline, MachineFunction is built well after
         // Function object was created and populated fully. Hence, creation of
@@ -1228,7 +1231,7 @@ static void DisassembleObject(const ObjectFile *Obj, bool InlineRelocs) {
                  "Unable to adjust function end value");
         }
       }
-
+      LLVM_DEBUG(dbgs() << "\n encap2 \n");
       // Get the associated MCInstRaiser
       MCInstRaiser *mcInstRaiser = curMFRaiser->getMCInstRaiser();
 
@@ -1238,8 +1241,7 @@ static void DisassembleObject(const ObjectFile *Obj, bool InlineRelocs) {
       for (Index = Start; Index < End; Index += Size) {
         MCInst Inst;
 
-        if (Index + SectionAddr < StartAddress ||
-            Index + SectionAddr > StopAddress) {
+        if (Index + SectionAddr < StartAddress || Index + SectionAddr > StopAddress) {
           // skip byte by byte till StartAddress is reached
           Size = 1;
           continue;
@@ -1271,6 +1273,8 @@ static void DisassembleObject(const ObjectFile *Obj, bool InlineRelocs) {
                   Data = *Word;
                 }
                 mcInstRaiser->addMCInstOrData(Index, Data);
+                LLVM_DEBUG(dbgs() << "Data0:" << Data << "\n");
+                LLVM_DEBUG(dbgs() << "\nFunction " << curMFRaiser->getMachineFunction().getName() << ":\n");
               } else if (Index + 2 <= End) {
                 Stride = 2;
                 uint16_t Data = 0;
@@ -1286,9 +1290,11 @@ static void DisassembleObject(const ObjectFile *Obj, bool InlineRelocs) {
                   Data = *Short;
                 }
                 mcInstRaiser->addMCInstOrData(Index, Data);
+                LLVM_DEBUG(dbgs() << "Data1:" << Data << "\n");
               } else {
                 Stride = 1;
                 mcInstRaiser->addMCInstOrData(Index, Bytes.slice(Index, 1)[0]);
+                LLVM_DEBUG(dbgs() << "Data2:sdfds" << Bytes.slice(Index, 1)[0] << "\n");
               }
               Index += Stride;
 

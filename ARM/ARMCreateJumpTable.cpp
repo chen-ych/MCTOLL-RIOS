@@ -122,7 +122,7 @@ bool ARMCreateJumpTable::raiseMaichineJumpTable(MachineFunction &MF) {
 
   std::map<uint64_t, MCInstOrData> mcInstMapData;
   MCInstRaiser::const_mcinst_iter iter_in;
-
+  LLVM_DEBUG(dbgs() << "Funcssss:" << MF.getName() << ":\n");
   // Save the ADDri and Calculate the start address of data.
   for (MachineBasicBlock &JmpTblBaseCalcMBB : MF) {
     for (MachineBasicBlock::iterator CurMBBIter = JmpTblBaseCalcMBB.begin();
@@ -157,6 +157,7 @@ bool ARMCreateJumpTable::raiseMaichineJumpTable(MachineFunction &MF) {
         for (iter_in = MCIR->const_mcinstr_begin();
              iter_in != MCIR->const_mcinstr_end(); iter_in++) {
           MCInstOrData mcInstorData = iter_in->second;
+          LLVM_DEBUG(dbgs() << "mcInstorData:" << mcInstorData.getData() << "\n");
           if (mcInstorData.isData() && mcInstorData.getData() > 0) {
             // The 16 is 8 + 8. The first 8 is the PC offset, the second 8 is
             // the immediate of current instruction.
@@ -164,6 +165,7 @@ bool ARMCreateJumpTable::raiseMaichineJumpTable(MachineFunction &MF) {
             // be CASE VALUE + PC + 8.
             // If the current library is not position-independent, the offset
             // should be CASE VALUE - text section address.
+            LLVM_DEBUG(dbgs() << "mcInstorData22:" << mcInstorData.getData() << "\n");
             uint64_t Offset =
                 IsFPIC ? (mcInstorData.getData() +
                           MCIR->getMCInstIndex(JmpTblOffsetCalcMI) + 16)
@@ -181,6 +183,7 @@ bool ARMCreateJumpTable::raiseMaichineJumpTable(MachineFunction &MF) {
         if (JmpTgtMBBvec.size() == 0) {
           continue;
         }
+        LLVM_DEBUG(dbgs() << "reach here" << "\n");
         // Construct jump table. Current block is the block which would
         // potentially contain the start of jump targets. If current block has
         // multiple predecessors this may not be a jump table. For now assert
