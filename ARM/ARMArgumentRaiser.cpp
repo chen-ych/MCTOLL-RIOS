@@ -159,9 +159,9 @@ bool ARMArgumentRaiser::raiseArgs() {
 
   int argidx = 1;
   for (Function::arg_iterator argi = fn->arg_begin(), arge = fn->arg_end();
-       argi != arge; ++argi)
+       argi != arge; ++argi){
     argi->setName("arg." + std::to_string(argidx++));
-
+  }
   for (unsigned i = 0, e = fn->arg_size() + 1; i < e; ++i) {
     Align ALG(32);
     MFI->CreateStackObject(32, ALG, false);

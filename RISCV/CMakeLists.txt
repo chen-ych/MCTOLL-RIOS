@@ -16,6 +16,9 @@ llvm_add_library(RISCVRaiser STATIC
   RISCV32MIRevising.cpp
   RISCV32EliminatePrologEpilog.cpp
   RISCV32CreateJumpTable.cpp
+  RISCV32ArgumentRaiser.cpp
+  RISCV32FrameBuilder.cpp
+
   RISCV64MachineInstructionRaiser.cpp
   RISCV64ModuleRaiser.cpp
   RISCVCallingConvention.cpp

@@ -1,7 +1,5 @@
-; ModuleID = './test/mtest/hello-arm'
-source_filename = "./test/mtest/hello-arm"
-
-@ROConst428 = private constant i32 499999, align 32
+; ModuleID = '/home/ychen/LLVM/llvm/tools/llvm-mctoll/test/mtest/hello-arm'
+source_filename = "/home/ychen/LLVM/llvm/tools/llvm-mctoll/test/mtest/hello-arm"
 
 define i32 @func(i32 %arg.1, i32 %arg.2, i32 %arg.3) {
 EntryBlock:
@@ -50,13 +48,11 @@ EntryBlock:
   store i32 %5, i32* %stack.6, align 2
   %6 = add i32 0, 0
   store i32 %6, i32* %stack.4, align 2
-  br label %7
-
-7:                                                ; preds = %EntryBlock
-  %8 = load i32, i32* %stack.4, align 2
-  %9 = ptrtoint i32* @ROConst428 to i32
+  %7 = load i32, i32* %stack.4, align 2
+  %8 = sub i32 %7, %7
+  %9 = add i32 %8, 0
   %10 = xor i32 %9, -1
-  %11 = add i32 %8, 1
+  %11 = add i32 %7, 1
   %12 = call { i32, i1 } @llvm.uadd.with.overflow.i32(i32 %10, i32 %11)
   %13 = call { i32, i1 } @llvm.sadd.with.overflow.i32(i32 %10, i32 %11)
   %14 = extractvalue { i32, i1 } %12, 0
@@ -69,30 +65,23 @@ EntryBlock:
   store i1 %18, i1* %2, align 1
   %19 = extractvalue { i32, i1 } %13, 1
   store i1 %19, i1* %3, align 1
-  %20 = load i1, i1* %0, align 1
-  %21 = load i1, i1* %1, align 1
-  %22 = load i1, i1* %3, align 1
-  %23 = icmp eq i1 %21, true
-  %24 = icmp ne i1 %20, %22
-  %25 = xor i1 %23, %24
-  br i1 %25, label %26, label %31
+  %20 = load i1, i1* %1, align 1
+  %21 = icmp eq i1 %20, false
+  br i1 %21, label %22, label %25
 
-26:                                               ; preds = %7
-  %27 = add i32 1, 0
-  %28 = call i32 @func(i32 %4, i32 %5, i32 %27)
-  %29 = load i32, i32* %stack.4, align 2
-  %30 = add i32 %29, 1
-  store i32 %30, i32* %stack.4, align 2
-  br label %34
+22:                                               ; preds = %EntryBlock
+  %23 = add i32 0, 0
+  %24 = add i32 %23, 0
+  br label %28
 
-31:                                               ; preds = %7
-  %32 = add i32 0, 0
-  %33 = add i32 %32, 0
-  br label %34
+25:                                               ; preds = %EntryBlock
+  %26 = add i32 1, 0
+  %27 = call i32 @func(i32 %4, i32 %5, i32 %26)
+  br label %28
 
-34:                                               ; preds = %31, %26
-  %35 = phi i32 [ %33, %31 ]
-  ret i32 %35
+28:                                               ; preds = %25, %22
+  %29 = phi i32 [ %24, %22 ]
+  ret i32 %29
 }
 
 ; Function Attrs: nofree nosync nounwind readnone speculatable willreturn

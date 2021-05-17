@@ -6,6 +6,10 @@
 #include "RISCV32MIRevising.h"
 #include "RISCV32EliminatePrologEpilog.h"
 #include "RISCV32CreateJumpTable.h"
+#include "RISCV32ArgumentRaiser.h"
+#include "RISCV32MachineInstructionRaiser.h"
+#include "RISCV32FrameBuilder.h"
+
 #include "MachineInstructionRaiser.h"
 #include "llvm-mctoll.h"
 
@@ -54,13 +58,13 @@ bool RISCV32MachineInstructionRaiser::raiseMachineFunction() {
   cjt.create();
   cjt.getJTlist(jtList);
 
-  // RISCV32ArgumentRaiser ar(rmr);
-  // ar.init(&MF, raisedFunction);
-  // ar.raiseArgs();
+  RISCV32ArgumentRaiser ar(rmr);
+  ar.init(&MF, raisedFunction);
+  ar.raiseArgs();
 
-  // RISCV32FrameBuilder fb(rmr);
-  // fb.init(&MF, raisedFunction);
-  // fb.build();
+  RISCV32FrameBuilder fb(rmr);
+  fb.init(&MF, raisedFunction);
+  fb.build();
 
   // RISCV32InstructionSplitting ispl(rmr);
   // ispl.init(&MF, raisedFunction);

@@ -133,6 +133,10 @@ bool RISCV32CreateJumpTable::raiseMaichineJumpTable(MachineFunction &MF) {
   //     // ldr     r1, [sp]
   //     // ldr     r2, [r0, r1, lsl #2]
   //     // add     pc, r0, r2
+
+  //     To do: For arm, only find jump table when "add   r0, pc", #imm pattern exists, what is the pattern mean? in which case this pattern appears?
+  //            and how to modify it for risc-v ? 
+
   //     if (JmpTblOffsetCalcMI.getOpcode() == RISCV32::ADDri &&
   //         JmpTblOffsetCalcMI.getOperand(1).getReg() == RISCV32::PC &&
   //         JmpTblOffsetCalcMI.getOperand(2).getImm() == 8) {
