@@ -18,6 +18,7 @@ llvm_add_library(RISCVRaiser STATIC
   RISCV32CreateJumpTable.cpp
   RISCV32ArgumentRaiser.cpp
   RISCV32FrameBuilder.cpp
+  RISCV32InstructionSplitting.cpp
 
   RISCV64MachineInstructionRaiser.cpp
   RISCV64ModuleRaiser.cpp
