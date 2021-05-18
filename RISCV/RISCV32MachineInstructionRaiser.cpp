@@ -10,6 +10,7 @@
 #include "RISCV32MachineInstructionRaiser.h"
 #include "RISCV32FrameBuilder.h"
 #include "RISCV32InstructionSplitting.h"
+#include "RISCV32SelectionDAGISel.h"
 #include "MachineInstructionRaiser.h"
 #include "llvm-mctoll.h"
 
@@ -70,12 +71,12 @@ bool RISCV32MachineInstructionRaiser::raiseMachineFunction() {
   ispl.init(&MF, raisedFunction);
   ispl.split();
 
-  // RISCV32SelectionDAGISel sdis(rmr);
-  // sdis.init(&MF, raisedFunction);
-  // sdis.setjtList(jtList);
-  // sdis.doSelection();
+  RISCV32SelectionDAGISel sdis(rmr);
+  sdis.init(&MF, raisedFunction);
+  sdis.setjtList(jtList);
+  sdis.doSelection();
 
-  // return true;
+  return true;
 }
 
 bool RISCV32MachineInstructionRaiser::raise() {
