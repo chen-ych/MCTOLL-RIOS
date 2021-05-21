@@ -18,7 +18,7 @@ see /home/ychen/LLVM/llvm/tools/llvm-mctoll/ARM/ARMMachineInstructionRaiser.cpp
 2. MIRevising:
 
     2.1 discover jump instruction `bl, bl_pred, bcc` 's jump target.  
-    2.2 In arm, there may exist data in text section like this ![img](/home/ychen/LLVM/llvm/tools/llvm-mctoll/img/693083DE-290B-442F-ACF6-5A6AAD6AB5F3.png), arm use ldr r3, [pc, #20] to load the data, and in this step, it transfer ldr r3, [pc, #20] to ldr r3, @globalvalue, this step is unnecessary for risc-v and x86
+    2.2 In arm, there may exist data in text section like this ![img](../img/693083DE-290B-442F-ACF6-5A6AAD6AB5F3.png), arm use ldr r3, [pc, #20] to load the data, and in this step, it transfer ldr r3, [pc, #20] to ldr r3, @globalvalue, this step is unnecessary for risc-v and x86
 
 3. Eliminate PrologEpilog: when entering a function, we need to modify the sp and fp register, this is called prolog, when leaving a function, we also need to modify the sp and fp register, this is called epilog. In arm, `str fp, [sp, #-4]!` and `add fp, sp, #0` form a prolog, `sub sp, fp, #0` and `ldr fp, [sp], #4` form a epilog, also there exist other prologs and epilogs. In this step, we need to eliminate the prologs and epilogs, and save them in some data structure. 
 4. CreateJumpTable, deal with long jump, still unsure in which situation 'add     r0, pc, #8' exists
