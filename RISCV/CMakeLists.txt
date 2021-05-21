@@ -1,4 +1,6 @@
 include_directories(
+  ${LLVM_MAIN_SRC_DIR}/lib/Target/ARM
+  ${LLVM_BINARY_DIR}/lib/Target/ARM
   ${LLVM_MAIN_SRC_DIR}/lib/Target/RISCV
   ${LLVM_BINARY_DIR}/lib/Target/RISCV
   ${CMAKE_CURRENT_SOURCE_DIR}/..

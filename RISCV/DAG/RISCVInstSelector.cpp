@@ -13,11 +13,13 @@
 
 #include "RISCVInstSelector.h"
 #include "RISCV.h"
+#include "ARM.h"
+#include "ARMSubtarget.h"
 #include "RISCVSubtarget.h"
 #include "RISCVSelectionCommon.h"
 
 using namespace llvm;
-
+#define DEBUG_TYPE "mctoll"
 /// Replace all uses of F with T, then remove F from the DAG.
 void RISCVInstSelector::replaceNode(SDNode *F, SDNode *T) {
   if (MachineSDNode::classof(F)) {
@@ -85,10 +87,45 @@ SDValue RISCVInstSelector::getMDOperand(SDNode *N) {
 /// Instruction opcode selection.
 void RISCVInstSelector::selectCode(SDNode *N) {
   SDLoc dl(N);
+  
+  switch (N->getMachineOpcode()) {
+  default:
+    break;
+  /* ADDI */
+  case RISCV::ADDI:{
+      LLVM_DEBUG(dbgs() << "addi\n");
+      SDValue R1 = N->getOperand(0);
+      SDValue R2 = N->getOperand(1);
+      SDValue R3 = N->getOperand(2);
+      ConstantSDNode *N2C = dyn_cast<ConstantSDNode>(R3);
+      // if (RegisterSDNode::classof(Rn.getNode()))
+      //     Rn = FuncInfo->getValFromRegMap(Rn);
+      LLVM_DEBUG(dbgs() << ISD::ADD << "\n");
+      // if(R3.imm()){
+      SDNode *Node;
+      Node = CurDAG->getNode(ARMISD::CMOV, dl, getDefaultEVT(), R2, CurDAG->getConstant(N2C->getSExtValue(), dl, getDefaultEVT())).getNode();
+      LLVM_DEBUG(dbgs() << Node->getOpcode() << "\n");
+      recordDefinition(R1.getNode(), Node);
+      replaceNode(N, Node);
+    }
+    break;
+    /* STR */
+  case RISCV::SW: {
+    SDValue Val = N->getOperand(0);
+    SDValue Ptr = N->getOperand(1); // This is a pointer.
 
-  // switch (N->getMachineOpcode()) {
-  // default:
-  //   break;
+    if (RegisterSDNode::classof(Val.getNode()))
+      Val = FuncInfo->getValFromRegMap(Val);
+
+    if (RegisterSDNode::classof(Ptr.getNode()))
+      Ptr = FuncInfo->getValFromRegMap(Ptr);
+
+    SDNode *Node = CurDAG->getNode(EXT_RISCV32ISD::STORE, dl, getDefaultEVT(), Val, Ptr, getMDOperand(N)).getNode();
+    replaceNode(N, Node);
+    } 
+    break;
+  }
+  
   // /* ADC */
   // case RISCV32::ADCrr:
   // case RISCV32::ADCri:
@@ -122,62 +159,6 @@ void RISCVInstSelector::selectCode(SDNode *N) {
   //                ->getNode(ISD::ADDC, dl, getDefaultEVT(), Rn, op2,
   //                          getMDOperand(N))
   //                .getNode();
-  //   }
-
-  //   recordDefinition(Rd.getNode(), Node);
-  //   replaceNode(N, Node);
-  // } break;
-  // /* ADD */
-  // case RISCV32::ADDri:
-  // case RISCV32::ADDrr:
-  // case RISCV32::ADDrsi:
-  // case RISCV32::ADDrsr:
-  // case RISCV32::tADDspi:
-  // case RISCV32::tADDrSP:
-  // case RISCV32::tADDi3:
-  // case RISCV32::tADDrSPi:
-  // case RISCV32::tADDi8:
-  // case RISCV32::tADDhirr:
-  // case RISCV32::tADDrr:
-  // case RISCV32::tADDspr:
-  // case RISCV32::t2ADDrs:
-  // case RISCV32::t2ADDri:
-  // case RISCV32::t2ADDrr:
-  // case RISCV32::t2ADDri12: {
-  //   // TODO:
-  //   // 1. Check out MI is two-address or three-address
-  //   // 2. Do with the displacement operation.(not yet implement.)
-  //   // Judge the MI address module, then check out whether has the imm.
-  //   SDValue Rd = N->getOperand(0);
-  //   SDValue Rn = N->getOperand(1);
-  //   // <opcode>   {<cond>}{s}<Rd>，<Rn>{，<OP2>}
-  //   SDNode *Node = nullptr;
-  //   if (FrameIndexSDNode::classof(N->getOperand(1).getNode())) {
-  //     Node = CurDAG
-  //                ->getNode(EXT_RISCV32ISD::LOAD, dl, getDefaultEVT(), Rn,
-  //                          getMDOperand(N))
-  //                .getNode();
-  //   } else {
-  //     if (isTwoAddressMode(Rd.getNode())) {
-  //       if (RegisterSDNode::classof(N->getOperand(1).getNode()))
-  //         Rn = FuncInfo->getValFromRegMap(N->getOperand(1));
-
-  //       SDValue Rd = FuncInfo->getValFromRegMap(N->getOperand(0));
-  //       Node = CurDAG
-  //                  ->getNode(ISD::ADD, dl, getDefaultEVT(), Rd, Rn,
-  //                            getMDOperand(N))
-  //                  .getNode();
-  //     } else {
-  //       SDValue op2 = N->getOperand(2);
-  //       if (RegisterSDNode::classof(op2.getNode()))
-  //         op2 = FuncInfo->getValFromRegMap(op2);
-
-  //       Rn = FuncInfo->getValFromRegMap(N->getOperand(1));
-  //       Node = CurDAG
-  //                  ->getNode(ISD::ADD, dl, getDefaultEVT(), Rn, op2,
-  //                            getMDOperand(N))
-  //                  .getNode();
-  //     }
   //   }
 
   //   recordDefinition(Rd.getNode(), Node);
@@ -248,36 +229,6 @@ void RISCVInstSelector::selectCode(SDNode *N) {
   //                      .getNode();
 
   //   recordDefinition(Rd.getNode(), Node);
-  //   replaceNode(N, Node);
-  // } break;
-  // /* STR */
-  // case RISCV32::STRi12:
-  // case RISCV32::STRrs:
-  // case RISCV32::STRD:
-  // case RISCV32::STRD_POST:
-  // case RISCV32::STRD_PRE:
-  // case RISCV32::t2STREXD:
-  // case RISCV32::STREXB:
-  // case RISCV32::STREXD:
-  // case RISCV32::STREXH:
-  // case RISCV32::STREX:
-  // case RISCV32::STR_PRE_IMM:
-  // case RISCV32::STR_PRE_REG:
-  // case RISCV32::STR_POST_IMM:
-  // case RISCV32::STR_POST_REG: {
-  //   SDValue Val = N->getOperand(0);
-  //   SDValue Ptr = N->getOperand(1); // This is a pointer.
-
-  //   if (RegisterSDNode::classof(Val.getNode()))
-  //     Val = FuncInfo->getValFromRegMap(Val);
-
-  //   if (RegisterSDNode::classof(Ptr.getNode()))
-  //     Ptr = FuncInfo->getValFromRegMap(Ptr);
-
-  //   SDNode *Node = CurDAG
-  //                      ->getNode(EXT_RISCV32ISD::STORE, dl, getDefaultEVT(), Val,
-  //                                Ptr, getMDOperand(N))
-  //                      .getNode();
   //   replaceNode(N, Node);
   // } break;
   // case RISCV32::STRH:

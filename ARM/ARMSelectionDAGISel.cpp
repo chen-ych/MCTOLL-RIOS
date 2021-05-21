@@ -73,16 +73,21 @@ void ARMSelectionDAGISel::doInstructionSelection() {
   SelectionDAG::allnodes_iterator ISelPosition = CurDAG->allnodes_begin();
   while (ISelPosition != CurDAG->allnodes_end()) {
     SDNode *Node = &*ISelPosition++;
+    Node->print_details(dbgs(), CurDAG);
+    LLVM_DEBUG(dbgs() << "\n---" << Node->getOperationName() << "----\n");
     SLT->select(Node);
   }
 }
 
 void ARMSelectionDAGISel::emitDAG() {
+  LLVM_DEBUG(dbgs() << "\n--- EmitDAG ----\n");
   IREmitter imt(BB, DAGInfo, FuncInfo);
   imt.setjtList(jtList);
   SelectionDAG::allnodes_iterator ISelPosition = CurDAG->allnodes_begin();
   while (ISelPosition != CurDAG->allnodes_end()) {
     SDNode *Node = &*ISelPosition++;
+    Node->print_details(dbgs(), CurDAG);
+    LLVM_DEBUG(dbgs() << "\n---" << Node->getOperationName() << "----\n");
     imt.emitNode(Node);
   }
 }

@@ -29,7 +29,6 @@ Value *RISCVDAGRaisingInfo::getRealValue(SDNode *Node) {
 void RISCVDAGRaisingInfo::setRealValue(SDNode *N, Value *V) {
   if (NPMap.count(N) == 0)
     NPMap[N] = new NodePropertyInfo();
-
   NPMap[N]->Val = V;
 }
 

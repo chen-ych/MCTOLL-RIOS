@@ -18,12 +18,12 @@
 #include <vector>
 
 using namespace llvm;
-
+#define DEBUG_TYPE "mctoll"
 /// Collects the information of each MI to create SDNodes.
 void RISCVDAGBuilder::visit(const MachineInstr &mi) {
   std::vector<SDValue> vctv;
   std::vector<EVT> vctt;
-
+  LLVM_DEBUG(dbgs() << mi << "\n");
   for (MachineInstr::const_mop_iterator B = mi.operands_begin(),
                                         E = mi.operands_end();
        B != E; ++B) {

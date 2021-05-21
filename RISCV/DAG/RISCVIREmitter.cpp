@@ -10,7 +10,8 @@
 // llvm-mctoll.
 //
 //===----------------------------------------------------------------------===//
-
+#include "ARM.h"
+#include "ARMSubtarget.h"
 #include "RISCVIREmitter.h"
 #include "RISCV32ModuleRaiser.h"
 #include "RISCVSelectionCommon.h"
@@ -18,7 +19,7 @@
 #include "llvm/CodeGen/MachineJumpTableInfo.h"
 
 using namespace llvm;
-
+#define DEBUG_TYPE "mctoll"
 RISCVIREmitter::RISCVIREmitter(BasicBlock *bb, RISCVDAGRaisingInfo *dagInfo,
                      RISCVFunctionRaisingInfo *funcInfo)
     : FT(bb->getParent()), BB(bb), CurBB(bb), DAGInfo(dagInfo),
@@ -34,11 +35,14 @@ static int raiseISDOpcodeToInstruction(unsigned Opcode) {
 #include "llvm/IR/Instruction.def"
 #define INVALID_INST (InstructionOpcodesCount + 1)
   };
+  LLVM_DEBUG(dbgs() << Opcode << ":" << ISD::ADD);
   switch (Opcode) {
   default:
+    LLVM_DEBUG(dbgs() << "default" );
     return INVALID_INST;
   case ISD::ADD:
-  // case RISCV32ISD::CMOV:
+  case ARMISD::CMOV:
+    LLVM_DEBUG(dbgs() << "ADDss" );
     return Add;
   case ISD::FADD:
     return FAdd;
@@ -248,15 +252,12 @@ PHINode *RISCVIREmitter::createAndEmitPHINode(SDNode *Node, BasicBlock *BB,
 /// Update the N Z C V flags of global variable.
 /// Implement AddWithCarry of encoding of instruction.
 /// AddWithCarry(Operand0, Operand1, Flag);
-void RISCVIREmitter::emitCPSR(Value *Operand0, Value *Operand1, BasicBlock *BB,
-                         unsigned Flag) {
+void RISCVIREmitter::emitCPSR(Value *Operand0, Value *Operand1, BasicBlock *BB, unsigned Flag) {
   Module &M = *MR->getModule();
   Type *Ty = IRB.getInt1Ty();
   Type *OperandTy = getDefaultType();
-  Function *F_Signed =
-      Intrinsic::getDeclaration(&M, Intrinsic::sadd_with_overflow, OperandTy);
-  Function *F_Unsigned =
-      Intrinsic::getDeclaration(&M, Intrinsic::uadd_with_overflow, OperandTy);
+  Function *F_Signed = Intrinsic::getDeclaration(&M, Intrinsic::sadd_with_overflow, OperandTy);
+  Function *F_Unsigned = Intrinsic::getDeclaration(&M, Intrinsic::uadd_with_overflow, OperandTy);
   Value *Args[] = {Operand0, Operand1};
   Value *Unsigned_Sum;
   Value *Signed_Sum;
@@ -426,6 +427,9 @@ void RISCVIREmitter::emitBinaryCPSR(Value *Inst, BasicBlock *BB, unsigned Opcode
 void RISCVIREmitter::emitBinary(SDNode *Node) {
   unsigned Opc = Node->getOpcode();
   BasicBlock *BB = getBlock();
+  LLVM_DEBUG(dbgs() << *Node << "\n");
+  // LLVM_DEBUG(dbgs() << Node->getOperand(0) << "\n");
+  // LLVM_DEBUG(dbgs() << Node->getOperand(1) << "\n");
   Value *S0 = getIRValue(Node->getOperand(0));
   Value *S1 = getIRValue(Node->getOperand(1));
 
@@ -506,9 +510,10 @@ void RISCVIREmitter::emitSDNode(SDNode *Node) {
 #define LAST_OTHER_INST(NUM) InstructionOpcodesCount = NUM
 #include "llvm/IR/Instruction.def"
   };
-
+  LLVM_DEBUG(dbgs() << "enter here" << InstOpc << "\n");
   switch (InstOpc) {
   default:
+    LLVM_DEBUG(dbgs()<<"aa\n");
     emitSpecialNode(Node);
     break;
   case Add:
@@ -520,9 +525,11 @@ void RISCVIREmitter::emitSDNode(SDNode *Node) {
   case Shl:
   case AShr:
   case LShr:
+    LLVM_DEBUG(dbgs()<<"bb\n");
     emitBinary(Node);
     break;
   case Load: {
+    LLVM_DEBUG(dbgs()<<"cc\n");
     Value *S = getIRValue(Node->getOperand(0));
     Value *Ptr = nullptr;
     if (S->getType()->isPointerTy())
@@ -576,6 +583,7 @@ void RISCVIREmitter::emitSDNode(SDNode *Node) {
     }
   } break;
   case Store: {
+    LLVM_DEBUG(dbgs()<<"dd\n");
     Value *Val = getIRValue(Node->getOperand(0));
     Value *S = getIRValue(Node->getOperand(1));
     Value *Ptr = nullptr;
@@ -617,6 +625,7 @@ void RISCVIREmitter::emitSDNode(SDNode *Node) {
     }
   } break;
   case ICmp: {
+    LLVM_DEBUG(dbgs()<<"ee\n");
     Value *LHS = getIRValue(Node->getOperand(0));
     Value *RHS = getIRValue(Node->getOperand(1));
 
@@ -631,6 +640,7 @@ void RISCVIREmitter::emitSDNode(SDNode *Node) {
     emitCPSR(LHS, InstNot, BB, 1);
   } break;
   case FCmp: {
+    LLVM_DEBUG(dbgs()<<"ff\n");
     Value *LHS = getIRValue(Node->getOperand(0));
     Value *RHS = getIRValue(Node->getOperand(1));
 
