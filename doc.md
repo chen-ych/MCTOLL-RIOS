@@ -29,7 +29,7 @@ see /home/ychen/LLVM/llvm/tools/llvm-mctoll/ARM/ARMMachineInstructionRaiser.cpp:
  
 4. CreateJumpTable, deal with long jump, still unsure in which situation 'add r0, pc, #8' exists
 
-5. ArgumentRaiser(In `ARMArgumentRaiser.cpp`), add serveral machine instruction: create stack object and move arugment data from stack to registers, like `$r0 = MOVr %stack.1`, `$r1 = MOVr %stack.2`.
+5. ArgumentRaiser(In `ARMArgumentRaiser.cpp`): this step add serveral machine instruction: first create stack object and then use `$r0 = MOVr %stack.1`, `$r1 = MOVr %stack.2` machine instructions to move function arugments from stack to registers.
 
 Before ArgumentRaiser
 ![img](./img/2.jpg)
@@ -37,9 +37,17 @@ Before ArgumentRaiser
 After ArgumentRaise
 ![img](./img/3.jpg)
 
-6. FrameBuilder, search all stack objects and update them, STRi12 $r0, $r11, -16, 14, $noreg, <0x8b57068> -> STRi12 $r0, %stack.5.stack.5, 14, $noreg, <0x8b57068>.
+6. FrameBuilder: First replace common regs assigned by SP to SP, which means replace machine instructions from `mov r5, sp; ldr r3, [r5, #4]` to `ldr r3, [sp, #4]`. Then analyze frame index of stack operands, such as `ldr r3, [sp, #12]`, `str r4, [fp, #-8]`, and `add r0, sp, #imm`, get the offset from the instruction,  build a map `SPOffElementMap` from offset to stackElement and a map `InstrToElementMap` from machine instruction to stackElement.  Then generate stackobjects for stack element in `SPOffElementMap`. And replace original SP operands by stack operands in `InstrToElementMap`. 
+ 
+Example : STRi12 $r0, $r11, -16, 14, $noreg, <0x8b57068> -> STRi12 $r0, %stack.5.stack.5, 14, $noreg, <0x8b57068>.
 
-7. InstructionSplitting, split complex instructions in arm to serveral simple instructions, unnecssary for risc-v.
+Before FrameBuilder
+![img](./img/3.jpg)
+
+After FrameBuilder
+![img](./img/4.jpg)
+
+7. InstructionSplitting, split complex arm instructions (such as `LDRSH/LDRSB/LDRH/LDRD`) to serveral simple instructions, this step is unnecssary for risc-v.
 
 8. SelectionDAGISel, 
 
