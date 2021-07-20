@@ -87,8 +87,8 @@ void RISCV32SelectionDAGISel::emitDAG() {
   SelectionDAG::allnodes_iterator ISelPosition = CurDAG->allnodes_begin();
   while (ISelPosition != CurDAG->allnodes_end()) {
     SDNode *Node = &*ISelPosition++;
-    Node->print_details(dbgs(), CurDAG);
-    LLVM_DEBUG(dbgs() << "\n---" << Node->getOperationName() << "nodeid=" << Node->getNodeId() <<"nodetype" <<Node->getOpcode() <<"----\n");
+    //Node->print_details(dbgs(), CurDAG);
+    LLVM_DEBUG(dbgs() << "\n---" << Node->getOperationName() << "nodeid=" << Node->PersistentId <<"nodetype" <<Node->getOpcode() <<"----\n");
     //LLVM_DEBUG(dbgs() << "\n---" << Node->getOperationName() << "----\n");
     imt.emitNode(Node);
   }

@@ -513,7 +513,7 @@ void RISCVIREmitter::emitSDNode(SDNode *Node) {
 #define LAST_OTHER_INST(NUM) InstructionOpcodesCount = NUM
 #include "llvm/IR/Instruction.def"
   };
-  LLVM_DEBUG(dbgs() << "enter here" << InstOpc << "\n");
+  LLVM_DEBUG(dbgs() << "enter here" <<"\nISDOpc="<<Node->getOpcode() << "\ninstopc="<<InstOpc << "\n");
   switch (InstOpc) {
   default:
     LLVM_DEBUG(dbgs()<<"aa\n");
@@ -533,6 +533,8 @@ void RISCVIREmitter::emitSDNode(SDNode *Node) {
     break;
   case Load: {
     LLVM_DEBUG(dbgs()<<"cc\n");
+    LLVM_DEBUG(dbgs() <<""<<*(DAGInfo->NPMap[Node]->MI) << "\n");
+    //LLVM_DEBUG(Node->print(dbgs(),DAG));
     Value *S = getIRValue(Node->getOperand(0));
     Value *Ptr = nullptr;
     if (S->getType()->isPointerTy())
@@ -587,6 +589,8 @@ void RISCVIREmitter::emitSDNode(SDNode *Node) {
   } break;
   case Store: {
     LLVM_DEBUG(dbgs()<<"dd\n");
+    break;
+    LLVM_DEBUG(dbgs() <<""<<*(DAGInfo->NPMap[Node]->MI) << "\n");
     Value *Val = getIRValue(Node->getOperand(0));
     Value *S = getIRValue(Node->getOperand(1));
     Value *Ptr = nullptr;
