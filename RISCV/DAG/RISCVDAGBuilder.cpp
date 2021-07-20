@@ -20,10 +20,14 @@
 using namespace llvm;
 #define DEBUG_TYPE "mctoll"
 /// Collects the information of each MI to create SDNodes.
+
+uint32_t nodeid = 123;
+
 void RISCVDAGBuilder::visit(const MachineInstr &mi) {
   std::vector<SDValue> vctv;
   std::vector<EVT> vctt;
-  LLVM_DEBUG(dbgs() << mi << "\n");
+  nodeid ++;
+  LLVM_DEBUG(dbgs() << mi << " nodeid= "<< nodeid << "\n");
   for (MachineInstr::const_mop_iterator B = mi.operands_begin(),
                                         E = mi.operands_end();
        B != E; ++B) {
@@ -32,11 +36,13 @@ void RISCVDAGBuilder::visit(const MachineInstr &mi) {
     if (mo.isReg() && !mo.isDebug()) {
       EVT evt = EVT::getEVT(FuncInfo.getDefaultType());
       SDValue sdv = DAG.getRegister(mo.getReg(), evt);
+      LLVM_DEBUG(dbgs()<< "AAvisit at DAGBuilder" << (uint64_t)sdv.getNode() << "uniq id="<<sdv.getNode()->PersistentId << "\n" );
       vctv.push_back(sdv);
       vctt.push_back(evt);
     } else if (mo.isImm()) {
       EVT evt = FuncInfo.getDefaultEVT();
       SDValue sdv = DAG.getConstant(mo.getImm(), SDLoc(nullptr, 0), evt);
+      LLVM_DEBUG(dbgs()<< "BBvisit at DAGBuilder" << (uint64_t)sdv.getNode() << "uniq id="<<sdv.getNode()->PersistentId << "\n" );
       vctv.push_back(sdv);
       vctt.push_back(evt);
     } else if (mo.isFI()) {
@@ -46,6 +52,7 @@ void RISCVDAGBuilder::visit(const MachineInstr &mi) {
         AllocaInst *v = const_cast<AllocaInst *>(mfi.getObjectAllocation(fi));
         EVT evt = EVT::getEVT(v->getAllocatedType());
         SDValue sdv = DAG.getFrameIndex(fi, evt, false);
+        LLVM_DEBUG(dbgs()<< "CCvisit at DAGBuilder" << (uint64_t)sdv.getNode() << "uniq id="<<sdv.getNode()->PersistentId << "\n" );
         DAGInfo.setRealValue(sdv.getNode(), v);
         vctv.push_back(sdv);
         vctt.push_back(evt);
@@ -54,12 +61,14 @@ void RISCVDAGBuilder::visit(const MachineInstr &mi) {
             const_cast<Argument *>(FuncInfo.getCRF()->arg_begin() + (fi - 1));
         EVT evt = EVT::getEVT(v->getType());
         SDValue sdv = DAG.getFrameIndex(fi, evt, false);
+        LLVM_DEBUG(dbgs()<< "DDvisit at DAGBuilder" << (uint64_t)sdv.getNode() << "uniq id="<<sdv.getNode()->PersistentId << "\n" );
         DAGInfo.setRealValue(sdv.getNode(), v);
         vctv.push_back(sdv);
         vctt.push_back(evt);
       } else if (FuncInfo.isReturnIndex(fi)) {
         EVT evt = EVT::getEVT(FuncInfo.getCRF()->getReturnType());
         SDValue sdv = DAG.getFrameIndex(0, evt, false);
+        LLVM_DEBUG(dbgs()<< "EEvisit at DAGBuilder" << (uint64_t)sdv.getNode() << "uniq id="<<sdv.getNode()->PersistentId << "\n" );
         vctv.push_back(sdv);
         vctt.push_back(evt);
       } else {
@@ -68,6 +77,7 @@ void RISCVDAGBuilder::visit(const MachineInstr &mi) {
     } else if (mo.isJTI()) {
       EVT evt = EVT::getEVT(FuncInfo.getDefaultType());
       SDValue sdv = DAG.getConstant(mo.getIndex(), SDLoc(nullptr, 0), evt);
+      LLVM_DEBUG(dbgs()<< "FFvisit at DAGBuilder" << (uint64_t)sdv.getNode() << "uniq id="<<sdv.getNode()->PersistentId << "\n" );
       vctv.push_back(sdv);
       vctt.push_back(evt);
     } else if (mo.isSymbol()) {
@@ -75,6 +85,7 @@ void RISCVDAGBuilder::visit(const MachineInstr &mi) {
           FuncInfo.MR->getModule()->getNamedGlobal(mo.getSymbolName());
       EVT evt = EVT::getEVT(v->getValueType(), true);
       SDValue sdv = DAG.getExternalSymbol(mo.getSymbolName(), evt);
+      LLVM_DEBUG(dbgs()<< "GGvisit at DAGBuilder" << (uint64_t)sdv.getNode() << "uniq id="<<sdv.getNode()->PersistentId << "\n" );
       DAGInfo.setRealValue(sdv.getNode(), v);
       vctv.push_back(sdv);
       vctt.push_back(evt);
@@ -83,6 +94,7 @@ void RISCVDAGBuilder::visit(const MachineInstr &mi) {
       Type *ty = Type::getInt64Ty(FuncInfo.getCRF()->getContext());
       EVT evt = EVT::getEVT(ty);
       SDValue sdv = DAG.getMDNode(md);
+      LLVM_DEBUG(dbgs()<< "HHvisit at DAGBuilder" << (uint64_t)sdv.getNode() << "uniq id="<<sdv.getNode()->PersistentId << "\n" );
       vctv.push_back(sdv);
       vctt.push_back(evt);
     } else {
@@ -101,6 +113,8 @@ void RISCVDAGBuilder::visit(const MachineInstr &mi) {
   SDLoc sdl(nullptr, 0);
   MachineSDNode *mnode =
       DAG.getMachineNode(mi.getOpcode(), sdl, DAG.getVTList(VTs), Ops);
+  mnode->setNodeId(nodeid);
+  LLVM_DEBUG(dbgs()<< "####\nMachineSDNode::" << (uint64_t)mnode<<mnode->getNodeId() << "persistent id = "<< mnode->PersistentId <<"\n");
 
   NodePropertyInfo *npi = new NodePropertyInfo();
   npi->MI = &mi;

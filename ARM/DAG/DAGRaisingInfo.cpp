@@ -15,11 +15,14 @@
 
 using namespace llvm;
 
+#define DEBUG_TYPE "mctoll"
+
 DAGRaisingInfo::DAGRaisingInfo(SelectionDAG &dag) : DAG(dag) {}
 
 /// Gets the related IR Value of given SDNode.
 Value *DAGRaisingInfo::getRealValue(SDNode *Node) {
   assert(Node != nullptr && "Node cannot be nullptr!");
+  LLVM_DEBUG(dbgs()<<"getValue NPMap SDNode pointer="<<(uint64_t)Node);
   assert(NPMap[Node] != nullptr &&
          "Cannot find the corresponding node proprety!");
   return NPMap[Node]->Val;
@@ -31,6 +34,7 @@ void DAGRaisingInfo::setRealValue(SDNode *N, Value *V) {
     NPMap[N] = new NodePropertyInfo();
 
   NPMap[N]->Val = V;
+  LLVM_DEBUG(dbgs()<<"setValue NPMap SDNode pointer="<<(uint64_t)N);
 }
 
 void DAGRaisingInfo::clear() {

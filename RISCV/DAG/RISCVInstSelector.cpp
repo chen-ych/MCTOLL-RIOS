@@ -87,7 +87,7 @@ SDValue RISCVInstSelector::getMDOperand(SDNode *N) {
 /// Instruction opcode selection.
 void RISCVInstSelector::selectCode(SDNode *N) {
   SDLoc dl(N);
-  
+  LLVM_DEBUG(dbgs() <<"machineopcode at selectcode:"<< N->getMachineOpcode()<<"\n");
   switch (N->getMachineOpcode()) {
   default:
     break;
@@ -97,20 +97,61 @@ void RISCVInstSelector::selectCode(SDNode *N) {
       SDValue R1 = N->getOperand(0);
       SDValue R2 = N->getOperand(1);
       SDValue R3 = N->getOperand(2);
+      LLVM_DEBUG(R1.getNode()->print(dbgs(),CurDAG));
+      LLVM_DEBUG(R2.getNode()->print(dbgs(),CurDAG));
+      LLVM_DEBUG(R3.getNode()->print(dbgs(),CurDAG));
       ConstantSDNode *N2C = dyn_cast<ConstantSDNode>(R3);
-      // if (RegisterSDNode::classof(Rn.getNode()))
-      //     Rn = FuncInfo->getValFromRegMap(Rn);
+       //if (RegisterSDNode::classof(Rn.getNode()))
+        //   Rn = FuncInfo->getValFromRegMap(Rn);
       LLVM_DEBUG(dbgs() << ISD::ADD << "\n");
       // if(R3.imm()){
       SDNode *Node;
-      Node = CurDAG->getNode(ARMISD::CMOV, dl, getDefaultEVT(), R2, CurDAG->getConstant(N2C->getSExtValue(), dl, getDefaultEVT())).getNode();
-      LLVM_DEBUG(dbgs() << Node->getOpcode() << "\n");
-      recordDefinition(R1.getNode(), Node);
-      replaceNode(N, Node);
+      bool flag = 0;
+      if(R2->getOpcode() == ISD::Register) {
+        const RegisterSDNode *RR = dyn_cast<RegisterSDNode>(R2);
+        LLVM_DEBUG(dbgs() << "regno display here"<<RR->getReg());
+        if(RR->getReg() == 37) { // $x0 special case
+              SDNode *Node = CurDAG
+                       ->getNode(ISD::ADD, dl, getDefaultEVT(), R3,
+                                 CurDAG->getConstant(0, dl, getDefaultEVT()))
+                       .getNode();
+              recordDefinition(R1.getNode(), Node);
+              replaceNode(N, Node);
+              LLVM_DEBUG(dbgs()<<"at reg == 37 ::\n");
+              LLVM_DEBUG(Node->print(dbgs(),CurDAG));
+              flag = 1;
+        }
+      }
+      
+      if(!flag) {
+        SDValue op2 = N->getOperand(2);
+        if (RegisterSDNode::classof(op2.getNode()))
+          op2 = FuncInfo->getValFromRegMap(op2);
+
+        SDValue Rn = FuncInfo->getValFromRegMap(N->getOperand(1));
+        LLVM_DEBUG(dbgs()<<"113.3\n");
+        Node = CurDAG
+                   ->getNode(ISD::ADD /*EXT_RISCV32ISD::CMOV*/, dl, getDefaultEVT(), Rn, op2
+                             /*,getMDOperand(N)*/)
+                   .getNode();
+
+       // Node = CurDAG->
+       //   getNode(ISD::ADD, dl, getDefaultEVT(), R2, R3 /*getMDOperand(N) getDefaultEVT()*/)
+        //  .getNode();
+        //Node = CurDAG->getNode(ARMISD::CMOV, dl, getDefaultEVT(), R2, 
+        //        CurDAG->getConstant(N2C->getSExtValue(), dl, getDefaultEVT())
+         //     ).getNode();
+        LLVM_DEBUG(dbgs() << Node->getOpcode() << "\n");
+        recordDefinition(R1.getNode(), Node);
+        replaceNode(N, Node);
+        //LLVM_DEBUG(dbgs()<<"at reg <> 37 normalcase ::\n");
+        //LLVM_DEBUG(Node->print(dbgs(),CurDAG));
+      }
     }
     break;
     /* STR */
   case RISCV::SW: {
+    LLVM_DEBUG(dbgs() << "sw detecter\n");
     SDValue Val = N->getOperand(0);
     SDValue Ptr = N->getOperand(1); // This is a pointer.
 
@@ -123,9 +164,27 @@ void RISCVInstSelector::selectCode(SDNode *N) {
     SDNode *Node = CurDAG->getNode(EXT_RISCV32ISD::STORE, dl, getDefaultEVT(), Val, Ptr, getMDOperand(N)).getNode();
     replaceNode(N, Node);
     } 
-    break;
+  break;
+  case RISCV::LW: {
+    EVT InstTy = EVT::getEVT(Type::getInt16Ty(*CurDAG->getContext()));
+    SDValue Rd = N->getOperand(0);
+    SDValue Rn = N->getOperand(1);
+    SDNode *Node = nullptr;
+    LLVM_DEBUG(dbgs()<<"\nLW::Rd=");
+    LLVM_DEBUG(Rd.getNode()->print(dbgs(),CurDAG));
+    LLVM_DEBUG(dbgs()<<"\nLW::Rn=");
+    LLVM_DEBUG(Rn.getNode()->print(dbgs(),CurDAG));
+    LLVM_DEBUG(dbgs()<<"\n");
+
+    if (RegisterSDNode::classof(Rn.getNode()))
+      Rn = FuncInfo->getValFromRegMap(Rn);
+    Node = CurDAG->getNode(EXT_RISCV32ISD::LOAD, dl, InstTy, Rn/*, getMDOperand(N)*/)
+               .getNode();
+
+    recordDefinition(Rd.getNode(), Node);
+    replaceNode(N, Node);
   }
-  
+  break;
   // /* ADC */
   // case RISCV32::ADCrr:
   // case RISCV32::ADCri:
@@ -294,29 +353,31 @@ void RISCVInstSelector::selectCode(SDNode *N) {
 
   //   replaceNode(N, Node);
   // } break;
-  // /* LDR */
-  // case RISCV32::LDRi12:
-  // case RISCV32::LDRrs:
-  // case RISCV32::t2LDR_PRE:
-  // case RISCV32::t2LDR_POST:
-  // case RISCV32::tLDR_postidx:
-  // case RISCV32::LDR_PRE_IMM:
-  // case RISCV32::LDR_PRE_REG:
-  // case RISCV32::LDR_POST_IMM:
-  // case RISCV32::LDR_POST_REG: {
-  //   EVT InstTy = EVT::getEVT(Type::getInt32Ty(*CurDAG->getContext()));
-  //   SDValue Rd = N->getOperand(0);
-  //   SDValue Rn = N->getOperand(1);
-  //   SDNode *Node = nullptr;
-  //   if (RegisterSDNode::classof(Rn.getNode()))
-  //     Rn = FuncInfo->getValFromRegMap(Rn);
+  // 
+  /*
+  case ARM::LDRi12:
+  case ARM::LDRrs:
+  case ARM::t2LDR_PRE:
+  case ARM::t2LDR_POST:
+  case ARM::tLDR_postidx:
+  case ARM::LDR_PRE_IMM:
+  case ARM::LDR_PRE_REG:
+  case ARM::LDR_POST_IMM:
+  case ARM::LDR_POST_REG: {
+    EVT InstTy = EVT::getEVT(Type::getInt32Ty(*CurDAG->getContext()));
+    SDValue Rd = N->getOperand(0);
+    SDValue Rn = N->getOperand(1);
+    SDNode *Node = nullptr;
+    if (RegisterSDNode::classof(Rn.getNode()))
+      Rn = FuncInfo->getValFromRegMap(Rn);
 
-  //   Node = CurDAG->getNode(EXT_RISCV32ISD::LOAD, dl, InstTy, Rn, getMDOperand(N))
-  //              .getNode();
+    Node = CurDAG->getNode(EXT_RISCV32ISD::LOAD, dl, InstTy, Rn, getMDOperand(N))
+               .getNode();
 
-  //   recordDefinition(Rd.getNode(), Node);
-  //   replaceNode(N, Node);
-  // } break;
+    recordDefinition(Rd.getNode(), Node);
+    replaceNode(N, Node);
+  } break;
+  */
   // case RISCV32::LDRH:
   // case RISCV32::LDRSH:
   // case RISCV32::t2LDRSH_PRE:
@@ -1111,13 +1172,18 @@ void RISCVInstSelector::selectCode(SDNode *N) {
   // } break;
   //   // TODO: Need to add other pattern matching here.
   // }
+    break;
+  }  
 }
 
 void RISCVInstSelector::select(SDNode *N) {
+  LLVM_DEBUG(dbgs()<<"begin selcode perid="<<N->PersistentId<<"\n");
   if (!N->isMachineOpcode()) {
-    N->setNodeId(-1);
+    //N->setNodeId(-1);
+    LLVM_DEBUG(dbgs()<< "#### ###at select SDNode="<<(uint64_t)N <<  " used -1 ###\n");
     return; // Already selected.
   }
+  LLVM_DEBUG(dbgs()<< "$$$$$ at select SDNode="<<(uint64_t)N << "unqi id = "<< N->PersistentId << "###\n");
 
   selectCode(N);
 }

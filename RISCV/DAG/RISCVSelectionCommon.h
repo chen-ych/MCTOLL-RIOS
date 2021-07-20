@@ -42,7 +42,7 @@ enum NodeType {
   BIC,
   MLA,
   UXTB,
-
+  CMOV,
   EXT_RISCV32ISD_OP_END
 };
 

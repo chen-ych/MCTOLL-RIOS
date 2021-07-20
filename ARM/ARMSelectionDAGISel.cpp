@@ -74,7 +74,7 @@ void ARMSelectionDAGISel::doInstructionSelection() {
   while (ISelPosition != CurDAG->allnodes_end()) {
     SDNode *Node = &*ISelPosition++;
     Node->print_details(dbgs(), CurDAG);
-    LLVM_DEBUG(dbgs() << "\n---" << Node->getOperationName() << "----\n");
+    LLVM_DEBUG(dbgs() << "\n---" << Node->getOperationName() << "pid="<<Node->PersistentId<< "----\n");
     SLT->select(Node);
   }
 }

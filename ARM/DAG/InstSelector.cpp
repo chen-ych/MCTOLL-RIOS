@@ -17,6 +17,7 @@
 #include "SelectionCommon.h"
 
 using namespace llvm;
+#define DEBUG_TYPE "mctoll"
 
 /// Replace all uses of F with T, then remove F from the DAG.
 void InstSelector::replaceNode(SDNode *F, SDNode *T) {
@@ -85,9 +86,10 @@ SDValue InstSelector::getMDOperand(SDNode *N) {
 /// Instruction opcode selection.
 void InstSelector::selectCode(SDNode *N) {
   SDLoc dl(N);
-
+  LLVM_DEBUG(dbgs() <<"machineopcode at selectcode:"<< N->getMachineOpcode()<<"\n");
   switch (N->getMachineOpcode()) {
   default:
+    LLVM_DEBUG(dbgs()<<"111\n");
     break;
   /* ADC */
   case ARM::ADCrr:
@@ -97,7 +99,7 @@ void InstSelector::selectCode(SDNode *N) {
   case ARM::tADC:
   case ARM::t2ADCrr:
   case ARM::t2ADCri:
-  case ARM::t2ADCrs: {
+  case ARM::t2ADCrs: {LLVM_DEBUG(dbgs()<<"112\n");
     SDValue Rd = N->getOperand(0);
     SDValue Rn = N->getOperand(1);
     SDNode *Node = nullptr;
@@ -143,7 +145,7 @@ void InstSelector::selectCode(SDNode *N) {
   case ARM::t2ADDrs:
   case ARM::t2ADDri:
   case ARM::t2ADDrr:
-  case ARM::t2ADDri12: {
+  case ARM::t2ADDri12: {LLVM_DEBUG(dbgs()<<"113\n");
     // TODO:
     // 1. Check out MI is two-address or three-address
     // 2. Do with the displacement operation.(not yet implement.)
@@ -153,6 +155,7 @@ void InstSelector::selectCode(SDNode *N) {
     // <opcode>   {<cond>}{s}<Rd>，<Rn>{，<OP2>}
     SDNode *Node = nullptr;
     if (FrameIndexSDNode::classof(N->getOperand(1).getNode())) {
+      LLVM_DEBUG(dbgs()<<"113.1\n");
       Node = CurDAG
                  ->getNode(EXT_ARMISD::LOAD, dl, getDefaultEVT(), Rn,
                            getMDOperand(N))
@@ -163,6 +166,7 @@ void InstSelector::selectCode(SDNode *N) {
           Rn = FuncInfo->getValFromRegMap(N->getOperand(1));
 
         SDValue Rd = FuncInfo->getValFromRegMap(N->getOperand(0));
+        LLVM_DEBUG(dbgs()<<"113.2\n");
         Node = CurDAG
                    ->getNode(ISD::ADD, dl, getDefaultEVT(), Rd, Rn,
                              getMDOperand(N))
@@ -173,6 +177,7 @@ void InstSelector::selectCode(SDNode *N) {
           op2 = FuncInfo->getValFromRegMap(op2);
 
         Rn = FuncInfo->getValFromRegMap(N->getOperand(1));
+        LLVM_DEBUG(dbgs()<<"113.3\n");
         Node = CurDAG
                    ->getNode(ISD::ADD, dl, getDefaultEVT(), Rn, op2,
                              getMDOperand(N))
@@ -196,7 +201,7 @@ void InstSelector::selectCode(SDNode *N) {
   case ARM::t2SUBri12:
   case ARM::t2SUBrr:
   case ARM::t2SUBrs:
-  case ARM::t2SUBS_PC_LR: {
+  case ARM::t2SUBS_PC_LR: {LLVM_DEBUG(dbgs()<<"114\n");
     SDValue Rd = N->getOperand(0);
     SDValue Rn = N->getOperand(1);
     SDNode *Node = nullptr;
@@ -235,13 +240,18 @@ void InstSelector::selectCode(SDNode *N) {
   case ARM::t2MOVCCr:
   case ARM::t2MOVi32imm:
   case ARM::MOVTi16:
-  case ARM::MOVi: {
+  case ARM::MOVi: {LLVM_DEBUG(dbgs()<<"11533\n");
     // Dispalcement operation need do.
     SDValue Rd = N->getOperand(0);
     SDValue Rn = N->getOperand(1);
     if (RegisterSDNode::classof(Rn.getNode()))
       Rn = FuncInfo->getValFromRegMap(Rn);
-
+    LLVM_DEBUG(dbgs()<<"rd==");
+    LLVM_DEBUG(Rd.getNode()->print(dbgs(),CurDAG));
+    LLVM_DEBUG(dbgs()<<"\n");
+    LLVM_DEBUG(dbgs()<<"rn==");
+    LLVM_DEBUG(Rn.getNode()->print(dbgs(),CurDAG));
+    LLVM_DEBUG(dbgs()<<"\n");
     SDNode *Node = CurDAG
                        ->getNode(ARMISD::CMOV, dl, getDefaultEVT(), Rn,
                                  CurDAG->getConstant(0, dl, getDefaultEVT()))
@@ -264,7 +274,7 @@ void InstSelector::selectCode(SDNode *N) {
   case ARM::STR_PRE_IMM:
   case ARM::STR_PRE_REG:
   case ARM::STR_POST_IMM:
-  case ARM::STR_POST_REG: {
+  case ARM::STR_POST_REG: {LLVM_DEBUG(dbgs()<<"116\n");
     SDValue Val = N->getOperand(0);
     SDValue Ptr = N->getOperand(1); // This is a pointer.
 
@@ -282,7 +292,7 @@ void InstSelector::selectCode(SDNode *N) {
   } break;
   case ARM::STRH:
   case ARM::STRH_PRE:
-  case ARM::STRH_POST: {
+  case ARM::STRH_POST: {LLVM_DEBUG(dbgs()<<"117\n");
     EVT InstTy = EVT::getEVT(Type::getInt16Ty(*CurDAG->getContext()));
     SDValue Val = N->getOperand(0);
     SDValue Op1 = N->getOperand(1);
@@ -315,7 +325,7 @@ void InstSelector::selectCode(SDNode *N) {
   case ARM::STRB_PRE_IMM:
   case ARM::STRB_PRE_REG:
   case ARM::STRB_POST_IMM:
-  case ARM::STRB_POST_REG: {
+  case ARM::STRB_POST_REG: {LLVM_DEBUG(dbgs()<<"118\n");
     EVT InstTy = EVT::getEVT(Type::getInt8Ty(*CurDAG->getContext()));
     SDValue Val = N->getOperand(0);
     SDValue Op1 = N->getOperand(1);
@@ -352,13 +362,21 @@ void InstSelector::selectCode(SDNode *N) {
   case ARM::LDR_PRE_IMM:
   case ARM::LDR_PRE_REG:
   case ARM::LDR_POST_IMM:
-  case ARM::LDR_POST_REG: {
+  case ARM::LDR_POST_REG: {LLVM_DEBUG(dbgs()<<"111a\n");
     EVT InstTy = EVT::getEVT(Type::getInt32Ty(*CurDAG->getContext()));
     SDValue Rd = N->getOperand(0);
     SDValue Rn = N->getOperand(1);
+    LLVM_DEBUG(dbgs()<<"\nLW::Rd=");
+    LLVM_DEBUG(Rd.getNode()->print(dbgs(),CurDAG));
+    LLVM_DEBUG(dbgs()<<"\nLW::Rn=");
+    LLVM_DEBUG(Rn.getNode()->print(dbgs(),CurDAG));
+    LLVM_DEBUG(dbgs()<<"\n");
     SDNode *Node = nullptr;
-    if (RegisterSDNode::classof(Rn.getNode()))
+    LLVM_DEBUG(dbgs()<<"in 111a: rd="<<Rd->PersistentId<<" rn="<<Rn->PersistentId <<"\n");
+    if (RegisterSDNode::classof(Rn.getNode())) {
+      LLVM_DEBUG(dbgs()<<"detecter classof\n");
       Rn = FuncInfo->getValFromRegMap(Rn);
+    }
 
     Node = CurDAG->getNode(EXT_ARMISD::LOAD, dl, InstTy, Rn, getMDOperand(N))
                .getNode();
@@ -373,7 +391,7 @@ void InstSelector::selectCode(SDNode *N) {
   case ARM::t2LDRH_PRE:
   case ARM::t2LDRH_POST:
   case ARM::LDRSH_PRE:
-  case ARM::LDRSH_POST: {
+  case ARM::LDRSH_POST: {LLVM_DEBUG(dbgs()<<"1b11\n");
     EVT InstTy = EVT::getEVT(Type::getInt16Ty(*CurDAG->getContext()));
     SDValue Rd = N->getOperand(0);
     SDValue Rn = N->getOperand(1);
@@ -398,7 +416,7 @@ void InstSelector::selectCode(SDNode *N) {
   case ARM::LDRB_PRE_IMM:
   case ARM::LDRB_POST_IMM:
   case ARM::LDRB_PRE_REG:
-  case ARM::LDRB_POST_REG: {
+  case ARM::LDRB_POST_REG: {LLVM_DEBUG(dbgs()<<"1l11\n");
     EVT InstTy = EVT::getEVT(Type::getInt8Ty(*CurDAG->getContext()));
     SDValue Rd = N->getOperand(0);
     SDValue Rn = N->getOperand(1);
@@ -415,7 +433,7 @@ void InstSelector::selectCode(SDNode *N) {
   /* Branch */
   case ARM::Bcc:
   case ARM::tBcc:
-  case ARM::t2Bcc: {
+  case ARM::t2Bcc: {LLVM_DEBUG(dbgs()<<"1as11\n");
     SDValue Iftrue = N->getOperand(0);
     SDValue Cond = N->getOperand(1);
     SDNode *Node = nullptr;
@@ -439,7 +457,7 @@ void InstSelector::selectCode(SDNode *N) {
   } break;
   case ARM::B:
   case ARM::tB:
-  case ARM::t2B: {
+  case ARM::t2B: {LLVM_DEBUG(dbgs()<<"1ot11\n");
     SDValue BrBlock = N->getOperand(0);
     SDNode *Node =
         CurDAG->getNode(ISD::BR, dl, getDefaultEVT(), BrBlock, getMDOperand(N))
@@ -449,7 +467,7 @@ void InstSelector::selectCode(SDNode *N) {
   } break;
   case ARM::BL:
   case ARM::BL_pred:
-  case ARM::tBL: {
+  case ARM::tBL: {LLVM_DEBUG(dbgs()<<"1ow11\n");
     SDValue Func = N->getOperand(0);
     SDNode *Node = nullptr;
     if (RegisterSDNode::classof(Func.getNode())) {
@@ -473,10 +491,10 @@ void InstSelector::selectCode(SDNode *N) {
   case ARM::BLXi:
   case ARM::BLX_pred:
   case ARM::tBLXi:
-  case ARM::tBLXr: {
+  case ARM::tBLXr: {LLVM_DEBUG(dbgs()<<"11ogw1\n");
     outs() << "WARNING: Not yet implemented!\n";
   } break;
-  case ARM::BR_JTr: {
+  case ARM::BR_JTr: {LLVM_DEBUG(dbgs()<<"11p1\n");
     SDNode *Node = nullptr;
     SDValue Rd = N->getOperand(0);
     Node = CurDAG->getNode(ISD::BR_JT, dl, getDefaultEVT(), Rd, getMDOperand(N))
@@ -487,7 +505,7 @@ void InstSelector::selectCode(SDNode *N) {
   case ARM::BX_CALL:
   case ARM::BX_pred:
   case ARM::tBX:
-  case ARM::tBX_CALL: {
+  case ARM::tBX_CALL: {LLVM_DEBUG(dbgs()<<"11120\n");
     SDValue CallReg = N->getOperand(0);
     if (RegisterSDNode::classof(CallReg.getNode()))
       CallReg = FuncInfo->getValFromRegMap(CallReg);
@@ -509,7 +527,7 @@ void InstSelector::selectCode(SDNode *N) {
   case ARM::CMPri:
   case ARM::tCMPi8:
   case ARM::t2CMPrr:
-  case ARM::tCMPr: {
+  case ARM::tCMPr: {LLVM_DEBUG(dbgs()<<"112as1\n");
     SDValue cmpl = N->getOperand(0);
     SDValue cmph = N->getOperand(1);
     if (RegisterSDNode::classof(cmph.getNode()))
@@ -534,7 +552,7 @@ void InstSelector::selectCode(SDNode *N) {
   case ARM::tAND:
   case ARM::t2ANDri:
   case ARM::t2ANDrr:
-  case ARM::t2ANDrs: {
+  case ARM::t2ANDrs: {LLVM_DEBUG(dbgs()<<"1pq11\n");
     SDValue Rd = N->getOperand(0);
     SDValue Rn = N->getOperand(1);
     SDNode *Node = nullptr;
@@ -575,7 +593,7 @@ void InstSelector::selectCode(SDNode *N) {
   case ARM::tASRrr:
   case ARM::tASRri:
   case ARM::t2ASRrr:
-  case ARM::t2ASRri: {
+  case ARM::t2ASRri: {LLVM_DEBUG(dbgs()<<"1pqs11\n");
     SDValue Rd = N->getOperand(0);
     SDValue Rn = N->getOperand(1);
     SDNode *Node = nullptr;
@@ -609,7 +627,7 @@ void InstSelector::selectCode(SDNode *N) {
   case ARM::tCMNz:
   case ARM::t2CMNri:
   case ARM::t2CMNzrr:
-  case ARM::t2CMNzrs: {
+  case ARM::t2CMNzrs: {LLVM_DEBUG(dbgs()<<"1ops11\n");
     SDValue Rd = N->getOperand(0);
     SDValue Rn = N->getOperand(1);
     SDNode *Node = nullptr;
@@ -633,7 +651,7 @@ void InstSelector::selectCode(SDNode *N) {
   case ARM::tEOR:
   case ARM::t2EORrr:
   case ARM::t2EORrs:
-  case ARM::t2EORri: {
+  case ARM::t2EORri: {LLVM_DEBUG(dbgs()<<"1apq11\n");
     SDValue Rd = N->getOperand(0);
     SDValue Rn = N->getOperand(1);
     SDNode *Node = nullptr;
@@ -672,7 +690,7 @@ void InstSelector::selectCode(SDNode *N) {
   case ARM::MSRbanked:
   case ARM::t2MSR_M:
   case ARM::t2MSR_AR:
-  case ARM::t2MSRbanked: {
+  case ARM::t2MSRbanked: {LLVM_DEBUG(dbgs()<<"1epo11\n");
     // Update the CPSR.
     SDValue Cond = N->getOperand(1);
     SDNode *Node = nullptr;
@@ -689,7 +707,7 @@ void InstSelector::selectCode(SDNode *N) {
   /* MUL */
   case ARM::MUL:
   case ARM::tMUL:
-  case ARM::t2MUL: {
+  case ARM::t2MUL: {LLVM_DEBUG(dbgs()<<"1cpo11\n");
     /* MULS <Rd>, <Rn>, <Rm> */
     /* MUL<c> <Rd>, <Rn>, <Rm> */
     /* MUL{S}<c> <Rd>, <Rn>, <Rm> */
@@ -714,7 +732,7 @@ void InstSelector::selectCode(SDNode *N) {
   case ARM::tMVN:
   case ARM::t2MVNi:
   case ARM::t2MVNr:
-  case ARM::t2MVNs: {
+  case ARM::t2MVNs: {LLVM_DEBUG(dbgs()<<"1dpo11\n");
     SDValue Rd = N->getOperand(0);
     SDValue Rn = N->getOperand(1);
     SDNode *Node = nullptr;
@@ -735,7 +753,7 @@ void InstSelector::selectCode(SDNode *N) {
   case ARM::tLSLri:
   case ARM::tLSLrr:
   case ARM::t2LSLri:
-  case ARM::t2LSLrr: {
+  case ARM::t2LSLrr: {LLVM_DEBUG(dbgs()<<"1fpo11\n");
     SDValue Rd = N->getOperand(0);
     SDValue Rn = N->getOperand(1);
     SDNode *Node = nullptr;
@@ -768,7 +786,7 @@ void InstSelector::selectCode(SDNode *N) {
   case ARM::tLSRri:
   case ARM::tLSRrr:
   case ARM::t2LSRri:
-  case ARM::t2LSRrr: {
+  case ARM::t2LSRrr: {LLVM_DEBUG(dbgs()<<"1gg11\n");
     SDValue Rd = N->getOperand(0);
     SDValue Rn = N->getOperand(1);
     SDNode *Node = nullptr;
@@ -802,7 +820,7 @@ void InstSelector::selectCode(SDNode *N) {
   case ARM::tORR:
   case ARM::t2ORRri:
   case ARM::t2ORRrr:
-  case ARM::t2ORRrs: {
+  case ARM::t2ORRrs: {LLVM_DEBUG(dbgs()<<"1gigi11\n");
     SDValue Rd = N->getOperand(0);
     SDValue Rn = N->getOperand(1);
     // <opcode>   {<cond>}{s}<Rd>，<Rn>{，<OP2>}
@@ -834,7 +852,7 @@ void InstSelector::selectCode(SDNode *N) {
   case ARM::RORr:
   case ARM::tROR:
   case ARM::t2RORri:
-  case ARM::t2RORrr: {
+  case ARM::t2RORrr: {LLVM_DEBUG(dbgs()<<"1giegie11\n");
     SDValue Rd = N->getOperand(0);
     SDValue Rn = N->getOperand(1);
     SDNode *Node = nullptr;
@@ -880,7 +898,7 @@ void InstSelector::selectCode(SDNode *N) {
   case ARM::tRSB:
   case ARM::t2RSBri:
   case ARM::t2RSBrr:
-  case ARM::t2RSBrs: {
+  case ARM::t2RSBrs: {LLVM_DEBUG(dbgs()<<"1geigei11\n");
     SDValue Rd = N->getOperand(0);
     SDValue Rn = N->getOperand(1);
     SDNode *Node = nullptr;
@@ -909,7 +927,7 @@ void InstSelector::selectCode(SDNode *N) {
   case ARM::RSCri:
   case ARM::RSCrr:
   case ARM::RSCrsi:
-  case ARM::RSCrsr: {
+  case ARM::RSCrsr: {LLVM_DEBUG(dbgs()<<"1tt11\n");
     // RSC{S}<c> <Rd>,<Rn>, #0
     // RSC{S}<c>.W <Rd>,<Rn>,#<const>
     SDValue Rd = N->getOperand(0);
@@ -939,7 +957,7 @@ void InstSelector::selectCode(SDNode *N) {
   } break;
   /* CLZ */
   case ARM::CLZ:
-  case ARM::t2CLZ: {
+  case ARM::t2CLZ: {LLVM_DEBUG(dbgs()<<"1coma11\n");
     SDValue Rd = N->getOperand(0);
     SDValue Rn = FuncInfo->getValFromRegMap(N->getOperand(1));
     SDNode *Node = nullptr;
@@ -951,7 +969,7 @@ void InstSelector::selectCode(SDNode *N) {
   /* SBC */
   case ARM::SBCrr:
   case ARM::SBCri:
-  case ARM::tSBC: {
+  case ARM::tSBC: {LLVM_DEBUG(dbgs()<<"1apd11\n");
     SDValue Rn = FuncInfo->getValFromRegMap(N->getOperand(1));
     SDValue Operand2 = FuncInfo->getValFromRegMap(N->getOperand(2));
     SDNode *Node = CurDAG
@@ -969,7 +987,7 @@ void InstSelector::selectCode(SDNode *N) {
   case ARM::TEQrsr:
   case ARM::t2TEQri:
   case ARM::t2TEQrr:
-  case ARM::t2TEQrs: {
+  case ARM::t2TEQrs: {LLVM_DEBUG(dbgs()<<"1ppwq11\n");
     SDValue Rd = N->getOperand(0);
     SDValue Rn = N->getOperand(1);
     SDNode *Node = nullptr;
@@ -994,7 +1012,7 @@ void InstSelector::selectCode(SDNode *N) {
   case ARM::tTST:
   case ARM::t2TSTri:
   case ARM::t2TSTrr:
-  case ARM::t2TSTrs: {
+  case ARM::t2TSTrs: {LLVM_DEBUG(dbgs()<<"1aovib11\n");
     SDValue Rd = N->getOperand(0);
     SDValue Rn = N->getOperand(1);
     SDNode *Node = nullptr;
@@ -1019,7 +1037,7 @@ void InstSelector::selectCode(SDNode *N) {
   case ARM::tBIC:
   case ARM::t2BICri:
   case ARM::t2BICrr:
-  case ARM::t2BICrs: {
+  case ARM::t2BICrs: {LLVM_DEBUG(dbgs()<<"1siq11\n");
     SDValue Rd = N->getOperand(0);
     SDValue Rn = N->getOperand(1);
     SDNode *Node = nullptr;
@@ -1049,7 +1067,7 @@ void InstSelector::selectCode(SDNode *N) {
   } break;
   /* MLA */
   case ARM::MLA:
-  case ARM::t2MLA: {
+  case ARM::t2MLA: {LLVM_DEBUG(dbgs()<<"1aioq11\n");
     SDValue Rd = N->getOperand(0);
     SDValue Rn = FuncInfo->getValFromRegMap(N->getOperand(1));
     SDValue Rm = FuncInfo->getValFromRegMap(N->getOperand(2));
@@ -1063,7 +1081,7 @@ void InstSelector::selectCode(SDNode *N) {
     replaceNode(N, Node);
   } break;
   /* UXTB */
-  case ARM::UXTB: {
+  case ARM::UXTB: {LLVM_DEBUG(dbgs()<<"1aohgpw11\n");
     SDValue Rd = N->getOperand(0);
     SDValue Rm = N->getOperand(1);
     SDValue Rotation = N->getOperand(2);
@@ -1086,13 +1104,13 @@ void InstSelector::selectCode(SDNode *N) {
   case ARM::VMSR_FPEXC:
   case ARM::VMSR_FPSID:
   case ARM::VMSR_FPINST:
-  case ARM::VMSR_FPINST2: {
+  case ARM::VMSR_FPINST2: {LLVM_DEBUG(dbgs()<<"1qpfjpv11\n");
     outs() << "WARNING: Not yet implemented!\n";
   } break;
   case ARM::MRS:
   case ARM::MRSsys:
   case ARM::t2MRS_AR:
-  case ARM::t2MRSsys_AR: {
+  case ARM::t2MRSsys_AR: {LLVM_DEBUG(dbgs()<<"1apvj11\n");
     SDValue Rn = N->getOperand(0);
     if (RegisterSDNode::classof(Rn.getNode()))
       Rn = FuncInfo->getValFromRegMap(Rn);
@@ -1163,7 +1181,14 @@ void InstSelector::selectCode(SDNode *N) {
 }
 
 void InstSelector::select(SDNode *N) {
+  LLVM_DEBUG(dbgs()<< "#### at select SDNode="<<N->PersistentId << "###\n");
+  LLVM_DEBUG(N->printr(dbgs(),CurDAG));
+  LLVM_DEBUG(dbgs()<<"\n");
+  LLVM_DEBUG(N->print(dbgs(),CurDAG));
+  LLVM_DEBUG(dbgs()<<"\n");
+  
   if (!N->isMachineOpcode()) {
+    LLVM_DEBUG(dbgs()<< "#### ###at select SDNode="<<(uint64_t)N <<  " used -1 ###\n");
     N->setNodeId(-1);
     return; // Already selected.
   }

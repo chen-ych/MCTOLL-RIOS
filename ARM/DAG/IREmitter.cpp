@@ -18,7 +18,7 @@
 #include "llvm/CodeGen/MachineJumpTableInfo.h"
 
 using namespace llvm;
-
+#define DEBUG_TYPE "mctoll"
 IREmitter::IREmitter(BasicBlock *bb, DAGRaisingInfo *dagInfo,
                      FunctionRaisingInfo *funcInfo)
     : FT(bb->getParent()), BB(bb), CurBB(bb), DAGInfo(dagInfo),
@@ -117,7 +117,6 @@ static int raiseISDOpcodeToInstruction(unsigned Opcode) {
 
 Value *IREmitter::getIRValue(SDValue val) {
   SDNode *N = val.getNode();
-
   if (ConstantSDNode::classof(N))
     return const_cast<ConstantInt *>(
         (static_cast<ConstantSDNode *>(N))->getConstantIntValue());
@@ -426,9 +425,14 @@ void IREmitter::emitBinaryCPSR(Value *Inst, BasicBlock *BB, unsigned Opcode,
 void IREmitter::emitBinary(SDNode *Node) {
   unsigned Opc = Node->getOpcode();
   BasicBlock *BB = getBlock();
+  LLVM_DEBUG(dbgs() <<*(DAGInfo->NPMap[Node]->MI) << "\n");
+  LLVM_DEBUG(dbgs() << " SDNODE at emit binarynode value: " << Node->getNodeId() << "SDNodeopcodei:"<<Node->getOpcode() << "PersistnentId=" <<Node->PersistentId <<"\n");
+  LLVM_DEBUG(dbgs()  << Node->getOperand(0)->PersistentId<< " op000\n");
+  LLVM_DEBUG(dbgs()  << Node->getOperand(1)->PersistentId<< " op111\n");
   Value *S0 = getIRValue(Node->getOperand(0));
   Value *S1 = getIRValue(Node->getOperand(1));
-
+  LLVM_DEBUG(dbgs()<< "Value S0="<< *S0 <<"\n");
+  LLVM_DEBUG(dbgs()<< "Value S1="<<*S1<<"\n");
   int InstOpc = raiseISDOpcodeToInstruction(Opc);
 
   switch (InstOpc) {

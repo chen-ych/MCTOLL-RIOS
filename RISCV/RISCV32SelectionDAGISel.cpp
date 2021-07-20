@@ -69,14 +69,15 @@ void RISCV32SelectionDAGISel::selectBasicBlock() {
 }
 
 void RISCV32SelectionDAGISel::doInstructionSelection() {
-
+  LLVM_DEBUG(dbgs()<< "\n--- inside RISCV32SelectionDAGISel----\n");
   SelectionDAG::allnodes_iterator ISelPosition = CurDAG->allnodes_begin();
   while (ISelPosition != CurDAG->allnodes_end()) {
     SDNode *Node = &*ISelPosition++;
-    Node->print_details(dbgs(), CurDAG);
+    //LLVM_DEBUG(Node->print_details(dbgs(), CurDAG));
     LLVM_DEBUG(dbgs() << "\n---" << Node->getOperationName() << "----\n");
     SLT->select(Node);
   }
+  LLVM_DEBUG(dbgs()<< "\n--- end of RISCV32SelectionDAGISel----\n");
 }
 
 void RISCV32SelectionDAGISel::emitDAG() {
@@ -87,7 +88,8 @@ void RISCV32SelectionDAGISel::emitDAG() {
   while (ISelPosition != CurDAG->allnodes_end()) {
     SDNode *Node = &*ISelPosition++;
     Node->print_details(dbgs(), CurDAG);
-    LLVM_DEBUG(dbgs() << "\n---" << Node->getOperationName() << "----\n");
+    LLVM_DEBUG(dbgs() << "\n---" << Node->getOperationName() << "nodeid=" << Node->getNodeId() <<"nodetype" <<Node->getOpcode() <<"----\n");
+    //LLVM_DEBUG(dbgs() << "\n---" << Node->getOperationName() << "----\n");
     imt.emitNode(Node);
   }
 }

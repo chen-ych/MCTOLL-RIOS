@@ -41,7 +41,7 @@ static int raiseISDOpcodeToInstruction(unsigned Opcode) {
     LLVM_DEBUG(dbgs() << "default" );
     return INVALID_INST;
   case ISD::ADD:
-  case ARMISD::CMOV:
+  case EXT_RISCV32ISD::CMOV:
     LLVM_DEBUG(dbgs() << "ADDss" );
     return Add;
   case ISD::FADD:
@@ -78,10 +78,10 @@ static int raiseISDOpcodeToInstruction(unsigned Opcode) {
     return Or;
   case ISD::XOR:
     return Xor;
-  // case EXT_RISCV32ISD::LOAD:
-  //   return Load;
-  // case EXT_RISCV32ISD::STORE:
-  //   return Store;
+  case EXT_RISCV32ISD::LOAD:
+     return Load;
+  case EXT_RISCV32ISD::STORE:
+     return Store;
   case ISD::TRUNCATE:
     return Trunc;
   case ISD::ZERO_EXTEND:
@@ -427,12 +427,15 @@ void RISCVIREmitter::emitBinaryCPSR(Value *Inst, BasicBlock *BB, unsigned Opcode
 void RISCVIREmitter::emitBinary(SDNode *Node) {
   unsigned Opc = Node->getOpcode();
   BasicBlock *BB = getBlock();
-  LLVM_DEBUG(dbgs() << *Node << "\n");
-  // LLVM_DEBUG(dbgs() << Node->getOperand(0) << "\n");
-  // LLVM_DEBUG(dbgs() << Node->getOperand(1) << "\n");
-  Value *S0 = getIRValue(Node->getOperand(0));
+  LLVM_DEBUG(dbgs() <<*(DAGInfo->NPMap[Node]->MI) << "\n");
+  LLVM_DEBUG(dbgs() << " SDNODE at emit binarynode value: " << Node->getNodeId() << "SDNodeopcodei:"<<Node->getOpcode() << "PersistnentId=" <<Node->PersistentId <<"\n");
+  LLVM_DEBUG(dbgs()  << Node->getOperand(0)->PersistentId<< " op000\n");
+  LLVM_DEBUG(dbgs()  << Node->getOperand(1)->PersistentId<< " op111\n");
   Value *S1 = getIRValue(Node->getOperand(1));
+  LLVM_DEBUG(dbgs()<< "Value S1="<<*S1<<"\n");
+  Value *S0 = getIRValue(Node->getOperand(0));
 
+  LLVM_DEBUG(dbgs()<< "Value S0="<< *S0 <<"\n");
   int InstOpc = raiseISDOpcodeToInstruction(Opc);
 
   switch (InstOpc) {
