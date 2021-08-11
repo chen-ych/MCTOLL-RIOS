@@ -10,8 +10,8 @@ int func(int a, int b, int c){
 // }
 
 int main(int argc, int* argv[]){
-	int i =3, j = 1;
-	i = i + j;
+	int i =3;
+	i = i + 6;
 	/*
 	if(i == 0){
 		func(1, 1, 1);

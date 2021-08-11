@@ -584,7 +584,13 @@ void IREmitter::emitSDNode(SDNode *Node) {
     Value *S = getIRValue(Node->getOperand(1));
     Value *Ptr = nullptr;
     Type *Nty = Node->getValueType(0).getTypeForEVT(*CTX);
-
+        LLVM_DEBUG(dbgs()<<"S->print:\n");
+    LLVM_DEBUG(S->print(dbgs(),0));
+    LLVM_DEBUG(dbgs()<<"S->printOperand:\n");
+    LLVM_DEBUG(S->printAsOperand(dbgs()));
+    LLVM_DEBUG(dbgs() << "hahaha\n");
+    LLVM_DEBUG(Val->print(dbgs(),0));
+    LLVM_DEBUG(dbgs()<<"\nstore op print end\n");
     if (Val->getType() != Nty) {
       Val = IRB.CreateTrunc(Val, Nty);
     }

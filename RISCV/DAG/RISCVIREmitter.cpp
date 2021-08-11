@@ -589,30 +589,48 @@ void RISCVIREmitter::emitSDNode(SDNode *Node) {
   } break;
   case Store: {
     LLVM_DEBUG(dbgs()<<"dd\n");
-    break;
     LLVM_DEBUG(dbgs() <<""<<*(DAGInfo->NPMap[Node]->MI) << "\n");
+   // LLVM_DEBUG(Node->print(dbgs(),DAG));
+   
+    LLVM_DEBUG(dbgs()<<" d.1\n");
     Value *Val = getIRValue(Node->getOperand(0));
+    if(Val == nullptr) {
+      LLVM_DEBUG(dbgs()<< "warn nullptr of Val \n");
+      break;
+    }
     Value *S = getIRValue(Node->getOperand(1));
     Value *Ptr = nullptr;
     Type *Nty = Node->getValueType(0).getTypeForEVT(*CTX);
-
+    LLVM_DEBUG(dbgs()<<"S->print:\n");
+    LLVM_DEBUG(S->print(dbgs(),0));
+    LLVM_DEBUG(dbgs()<<"S->printOperand:\n");
+    LLVM_DEBUG(S->printAsOperand(dbgs()));
+    LLVM_DEBUG(dbgs() << "hahaha\n");
+    LLVM_DEBUG(Val->print(dbgs(),0));
+    LLVM_DEBUG(dbgs()<<"\nstore op print end\n");
+    /*
     if (Val->getType() != Nty) {
       Val = IRB.CreateTrunc(Val, Nty);
-    }
+    }*/
 
     if (S->getType()->isPointerTy()) {
+      LLVM_DEBUG(dbgs()<<"\ntag.1\n");
       if (S->getType() != Nty->getPointerTo()) {
+        LLVM_DEBUG(dbgs()<<"\ntag.2\n");
         Ptr = IRB.CreateBitCast(S, Nty->getPointerTo());
       } else {
+        LLVM_DEBUG(dbgs()<<"\ntag.3\n");
         Ptr = S;
       }
     } else {
+      LLVM_DEBUG(dbgs()<<"\ntag.4\n");
       Ptr = IRB.CreateIntToPtr(S, Nty->getPointerTo());
     }
 
     if (DAGInfo->NPMap[Node]->HasCPSR) {
       unsigned CondValue = DAGInfo->NPMap[Node]->Cond;
       // Create new BB for EQ instructin exectute.
+      LLVM_DEBUG(dbgs()<<"\ntag.5\n");
       BasicBlock *IfBB = BasicBlock::Create(*CTX, "", BB->getParent());
       // Create new BB to update the DAG BB.
       BasicBlock *ElseBB = BasicBlock::Create(*CTX, "", BB->getParent());
@@ -626,9 +644,12 @@ void RISCVIREmitter::emitSDNode(SDNode *Node) {
 
       IRB.CreateBr(ElseBB);
       IRB.SetInsertPoint(ElseBB);
+      LLVM_DEBUG(dbgs()<<"\ntag.6\n");
     } else {
+      LLVM_DEBUG(dbgs()<<"\ntag.7\n");
       IRB.CreateAlignedStore(Val, Ptr,
                              MaybeAlign(Log2(DLT->getPointerPrefAlignment())));
+      LLVM_DEBUG(dbgs()<<"\ntag.8\n");
     }
   } break;
   case ICmp: {

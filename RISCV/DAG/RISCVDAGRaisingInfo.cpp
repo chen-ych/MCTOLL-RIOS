@@ -21,7 +21,7 @@ RISCVDAGRaisingInfo::RISCVDAGRaisingInfo(SelectionDAG &dag) : DAG(dag) {}
 /// Gets the related IR Value of given SDNode.
 Value *RISCVDAGRaisingInfo::getRealValue(SDNode *Node) {
   assert(Node != nullptr && "Node cannot be nullptr!");
-  LLVM_DEBUG(dbgs()<<"getRealValue NPMap SDNode pointer="<<(uint64_t)Node);
+  //LLVM_DEBUG(dbgs()<<"getRealValue NPMap SDNode pointer="<<(uint64_t)Node);
   assert(NPMap[Node] != nullptr &&
          "Cannot find the corresponding node proprety!");
   return NPMap[Node]->Val;

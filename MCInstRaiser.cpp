@@ -31,6 +31,9 @@ void MCInstRaiser::buildCFG(MachineFunction &MF, const MCInstrAnalysis *MIA,
   auto targetIndicesEnd = targetIndices.end();
   uint64_t curMBBEntryInstIndex;
 
+  LLVM_DEBUG(MF.dump());
+  LLVM_DEBUG(dbgs() << "\nbuildCFG RaiseMCInst  BEFORE\n");
+  int iter_num = 0;
   for (auto mcInstorDataIter = mcInstMap.begin();
        mcInstorDataIter != mcInstMap.end(); mcInstorDataIter++) {
     uint64_t mcInstIndex = mcInstorDataIter->first;
@@ -114,8 +117,15 @@ void MCInstRaiser::buildCFG(MachineFunction &MF, const MCInstrAnalysis *MIA,
       // Add raised MachineInstr to current MBB.
       MF.back().push_back(
           RaiseMCInst(*MII, MF, mcInstorData.getMCInst(), mcInstIndex));
+      
     }
+    LLVM_DEBUG(dbgs() <<"\n-------------iternum:" << iter_num <<"--------\n" );
+    LLVM_DEBUG(dbgs() << MF.back().back() << "\n");
+    //LLVM_DEBUG(MF.dump());
+    iter_num += 1;
   }
+  LLVM_DEBUG(MF.dump());
+  LLVM_DEBUG(dbgs() << "\nbuildCFG RaiseMCInst  ended\n");
 
   // Add the entry instruction -> MBB map entry for the last MBB
   if (MF.size()) {
@@ -124,6 +134,8 @@ void MCInstRaiser::buildCFG(MachineFunction &MF, const MCInstrAnalysis *MIA,
     mcInstToMBBNum.insert(
         std::make_pair(curMBBEntryInstIndex, MF.back().getNumber()));
   }
+  LLVM_DEBUG(MF.dump());
+  LLVM_DEBUG(dbgs() << "\nbuildCFG Insert ended\n");
 
   // Walk all MachineBasicBlocks in MF to add control flow edges
   unsigned mbbCount = MF.getNumBlockIDs();
@@ -156,6 +168,7 @@ void MCInstRaiser::buildCFG(MachineFunction &MF, const MCInstrAnalysis *MIA,
   // MachineBasicBlocks.
   LLVM_DEBUG(dbgs() << "Generated CFG\n");
   LLVM_DEBUG(MF.dump());
+  LLVM_DEBUG(dbgs() << "\nbuildCFG ended\n");
 }
 
 static inline int64_t raiseSignedImm(int64_t val, const DataLayout &dl) {
@@ -181,6 +194,8 @@ MachineInstr *MCInstRaiser::RaiseMCInst(const MCInstrInfo &mcInstrInfo,
   // of builder object above.
   const unsigned int defCount = mcInstrDesc.getNumDefs();
   const unsigned int numOperands = mcInstrDesc.getNumOperands();
+  LLVM_DEBUG(dbgs()<<"\nat RaiseMCInst:    " );
+  LLVM_DEBUG(mcInst.print(dbgs()));
   for (unsigned int indx = 0; indx < numOperands; indx++) {
     // Raise operand
     MCOperand mcOperand = mcInst.getOperand(indx);
@@ -218,6 +233,7 @@ MachineInstr *MCInstRaiser::RaiseMCInst(const MCInstrInfo &mcInstrInfo,
       ConstantAsMetadata::get(ConstantInt::get(C, ArbPrecInt));
   MDNode *N = MDNode::get(C, CMD);
   builder.addMetadata(N);
+  LLVM_DEBUG(dbgs() << *builder.getInstr());
   return builder.getInstr();
 }
 

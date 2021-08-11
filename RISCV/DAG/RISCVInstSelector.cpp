@@ -27,9 +27,11 @@ void RISCVInstSelector::replaceNode(SDNode *F, SDNode *T) {
     DAGInfo->NPMap.erase(F);
     DAGInfo->NPMap[T] = np;
   }
-
+  LLVM_DEBUG(dbgs()<<"detecter replaceNode 1.0\n");
   CurDAG->ReplaceAllUsesWith(F, T);
+  LLVM_DEBUG(dbgs()<<"detecter replaceNode 2.0\n");
   CurDAG->RemoveDeadNode(F);
+  LLVM_DEBUG(dbgs()<<"detecter replaceNode 3.0\n");
 }
 
 /// Checks the SDNode is a function argument or not.
@@ -100,20 +102,43 @@ void RISCVInstSelector::selectCode(SDNode *N) {
       LLVM_DEBUG(R1.getNode()->print(dbgs(),CurDAG));
       LLVM_DEBUG(R2.getNode()->print(dbgs(),CurDAG));
       LLVM_DEBUG(R3.getNode()->print(dbgs(),CurDAG));
+
+      bool flag = 0;
+
+      if (FrameIndexSDNode::classof(N->getOperand(1).getNode())) {
+        if(FuncInfo->isArgumentIndex(static_cast<FrameIndexSDNode*>(R2.getNode())->getIndex())) {
+          LLVM_DEBUG(dbgs()<<"113.01.0\n");
+          SDNode *Node = CurDAG
+                       ->getNode(EXT_RISCV32ISD::CMOV, dl, getDefaultEVT(), R2,
+                                 CurDAG->getConstant(0, dl, getDefaultEVT()))
+                       .getNode();
+          recordDefinition(R1.getNode(), Node);
+          replaceNode(N, Node);
+        } else {
+          LLVM_DEBUG(dbgs()<<"113.01\n");
+          SDNode *Node = CurDAG
+                    ->getNode(EXT_RISCV32ISD::LOAD, dl, getDefaultEVT(), R2/*,
+                              getMDOperand(N)*/)
+                    .getNode();
+          recordDefinition(R1.getNode(), Node);
+          replaceNode(N, Node);
+        }
+        flag = 1;
+      }       
+
+
       ConstantSDNode *N2C = dyn_cast<ConstantSDNode>(R3);
        //if (RegisterSDNode::classof(Rn.getNode()))
         //   Rn = FuncInfo->getValFromRegMap(Rn);
       LLVM_DEBUG(dbgs() << ISD::ADD << "\n");
       // if(R3.imm()){
-      SDNode *Node;
-      bool flag = 0;
-      if(R2->getOpcode() == ISD::Register) {
+      if(R2->getOpcode() == ISD::Register && flag == 0) {
         const RegisterSDNode *RR = dyn_cast<RegisterSDNode>(R2);
         LLVM_DEBUG(dbgs() << "regno display here"<<RR->getReg());
         if(RR->getReg() == 37) { // $x0 special case
               SDNode *Node = CurDAG
                        ->getNode(ISD::ADD, dl, getDefaultEVT(), R3,
-                                 CurDAG->getConstant(0, dl, getDefaultEVT()))
+                                 CurDAG->getConstant(0, dl, getDefaultEVT()),getMDOperand(N))
                        .getNode();
               recordDefinition(R1.getNode(), Node);
               replaceNode(N, Node);
@@ -130,9 +155,9 @@ void RISCVInstSelector::selectCode(SDNode *N) {
 
         SDValue Rn = FuncInfo->getValFromRegMap(N->getOperand(1));
         LLVM_DEBUG(dbgs()<<"113.3\n");
-        Node = CurDAG
+        SDNode *Node = CurDAG
                    ->getNode(ISD::ADD /*EXT_RISCV32ISD::CMOV*/, dl, getDefaultEVT(), Rn, op2
-                             /*,getMDOperand(N)*/)
+                             ,getMDOperand(N))
                    .getNode();
 
        // Node = CurDAG->
@@ -151,17 +176,31 @@ void RISCVInstSelector::selectCode(SDNode *N) {
     break;
     /* STR */
   case RISCV::SW: {
-    LLVM_DEBUG(dbgs() << "sw detecter\n");
+    LLVM_DEBUG(dbgs() << "sw detecter\n" );
+    LLVM_DEBUG(N->print(dbgs(),CurDAG));
     SDValue Val = N->getOperand(0);
     SDValue Ptr = N->getOperand(1); // This is a pointer.
 
-    if (RegisterSDNode::classof(Val.getNode()))
+    if (RegisterSDNode::classof(Val.getNode())) {
       Val = FuncInfo->getValFromRegMap(Val);
+      LLVM_DEBUG(dbgs()<<"sw.1\n");
+    }
 
-    if (RegisterSDNode::classof(Ptr.getNode()))
+    if (RegisterSDNode::classof(Ptr.getNode())){
       Ptr = FuncInfo->getValFromRegMap(Ptr);
+      LLVM_DEBUG(dbgs()<<"sw.2\n");
+    }
+    /*
+    LLVM_DEBUG(dbgs()<<"\nval:");
+    LLVM_DEBUG(Val->print(dbgs(),CurDAG));
+    LLVM_DEBUG(dbgs()<<"\n");
 
+    LLVM_DEBUG(dbgs()<<"ptr:");
+    LLVM_DEBUG(Ptr->print(dbgs(),CurDAG));
+    LLVM_DEBUG(dbgs()<<"\n");
+    */
     SDNode *Node = CurDAG->getNode(EXT_RISCV32ISD::STORE, dl, getDefaultEVT(), Val, Ptr, getMDOperand(N)).getNode();
+
     replaceNode(N, Node);
     } 
   break;

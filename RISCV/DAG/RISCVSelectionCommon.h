@@ -30,7 +30,7 @@ namespace EXT_RISCV32ISD {
 enum NodeType {
   // BX_RET = EXTRISCV32ISD_OP_BEGIN,
   BRD, // Direct branch
-  LOAD=992,
+  LOAD=30234,
   STORE,
   MSR,
   MRS,

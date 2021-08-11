@@ -94,7 +94,8 @@ void RISCVDAGBuilder::visit(const MachineInstr &mi) {
       Type *ty = Type::getInt64Ty(FuncInfo.getCRF()->getContext());
       EVT evt = EVT::getEVT(ty);
       SDValue sdv = DAG.getMDNode(md);
-      LLVM_DEBUG(dbgs()<< "HHvisit at DAGBuilder" << (uint64_t)sdv.getNode() << "uniq id="<<sdv.getNode()->PersistentId << "\n" );
+      LLVM_DEBUG(dbgs()<< "Metadata !! HHvisit at DAGBuilder" << (uint64_t)sdv.getNode() << "uniq id="<<sdv.getNode()->PersistentId << "\n" );
+      LLVM_DEBUG(md->print(dbgs()));
       vctv.push_back(sdv);
       vctt.push_back(evt);
     } else {
@@ -115,6 +116,7 @@ void RISCVDAGBuilder::visit(const MachineInstr &mi) {
       DAG.getMachineNode(mi.getOpcode(), sdl, DAG.getVTList(VTs), Ops);
   mnode->setNodeId(nodeid);
   LLVM_DEBUG(dbgs()<< "####\nMachineSDNode::" << (uint64_t)mnode<<mnode->getNodeId() << "persistent id = "<< mnode->PersistentId <<"\n");
+  LLVM_DEBUG(mnode->print(dbgs(),&DAG));
 
   NodePropertyInfo *npi = new NodePropertyInfo();
   npi->MI = &mi;

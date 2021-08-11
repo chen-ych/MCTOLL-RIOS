@@ -92,7 +92,8 @@ void DAGBuilder::visit(const MachineInstr &mi) {
       Type *ty = Type::getInt64Ty(FuncInfo.getCRF()->getContext());
       EVT evt = EVT::getEVT(ty);
       SDValue sdv = DAG.getMDNode(md);
-      LLVM_DEBUG(dbgs()<< "HHvisit at DAGBuilder" << (uint64_t)sdv.getNode() << "\n" );
+      LLVM_DEBUG(dbgs()<< "Metadata !! visit at DAGBuilder" << (uint64_t)sdv.getNode() << "\n" );
+      LLVM_DEBUG(md->print(dbgs()));
       vctv.push_back(sdv);
       vctt.push_back(evt);
     } else {
@@ -111,11 +112,12 @@ void DAGBuilder::visit(const MachineInstr &mi) {
   SDLoc sdl(nullptr, 0);
   MachineSDNode *mnode =
       DAG.getMachineNode(mi.getOpcode(), sdl, DAG.getVTList(VTs), Ops);
-
+  LLVM_DEBUG(dbgs()<< "####\nMachineSDNode::" << (uint64_t)mnode<<mnode->getNodeId() << "persistent id = "<< mnode->PersistentId <<"\n");
+  LLVM_DEBUG(mnode->print(dbgs(),&DAG));
   NodePropertyInfo *npi = new NodePropertyInfo();
   npi->MI = &mi;
   DAGInfo.NPMap[mnode] = npi;
-
+  
   // TODO: Now the predicate operand not stripped, so the two-address operands
   // more than two.
   // Set the Node is two-address. The default is three-address.

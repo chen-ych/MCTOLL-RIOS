@@ -283,7 +283,7 @@ void InstSelector::selectCode(SDNode *N) {
 
     if (RegisterSDNode::classof(Ptr.getNode()))
       Ptr = FuncInfo->getValFromRegMap(Ptr);
-
+    
     SDNode *Node = CurDAG
                        ->getNode(EXT_ARMISD::STORE, dl, getDefaultEVT(), Val,
                                  Ptr, getMDOperand(N))
