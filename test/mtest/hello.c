@@ -9,15 +9,13 @@ int func(int a, int b, int c){
 // 	return 1;
 // }
 
+#include<stdio.h>
+
+int fn( int x ) {
+	return x;
+}
+
 int main(int argc, int* argv[]){
-	int i =3;
-	i = i + 6;
-	/*
-	if(i == 0){
-		func(1, 1, 1);
-		// func2();
-		// a += 2;
-	}
-	*/
-	return 0;
+	int i = fn(5);
+	return i;
 }

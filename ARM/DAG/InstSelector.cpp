@@ -477,6 +477,7 @@ void InstSelector::selectCode(SDNode *N) {
               ->getNode(ISD::BRIND, dl, getDefaultEVT(), Func, getMDOperand(N))
               .getNode();
     } else {
+      LLVM_DEBUG(Func.getNode()->dump());
       Node = CurDAG
                  ->getNode(EXT_ARMISD::BRD, dl, getDefaultEVT(), Func,
                            getMDOperand(N))

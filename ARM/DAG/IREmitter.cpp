@@ -701,6 +701,7 @@ void IREmitter::emitSpecialNode(SDNode *Node) {
   }
   case EXT_ARMISD::BRD: {
     // Get the function call Index.
+    LLVM_DEBUG(dbgs()<<"brd 1.0\n");
     uint64_t Index = Node->getConstantOperandVal(0);
     // Get function from ModuleRaiser.
     Function *CallFunc = MR->getRaisedFunctionAt(Index);
@@ -708,6 +709,7 @@ void IREmitter::emitSpecialNode(SDNode *Node) {
                                // variadic function prototype.
     bool IsSyscall = false;
     if (CallFunc == nullptr) {
+      LLVM_DEBUG(dbgs()<<"brd 2.0\n");
       // According MI to get BL instruction address.
       // uint64_t callAddr = DAGInfo->NPMap[Node]->InstAddr;
       uint64_t CallAddr = MR->getTextSectionAddress() +
@@ -715,6 +717,7 @@ void IREmitter::emitSpecialNode(SDNode *Node) {
       Function *IndefiniteFunc = MR->getCallFunc(CallAddr);
       CallFunc = MR->getSyscallFunc(Index);
       if (CallFunc != nullptr && IndefiniteFunc != nullptr) {
+        LLVM_DEBUG(dbgs()<<"brd 3.0\n");
         IFFuncArgNum = MR->getFunctionArgNum(CallAddr);
         IsSyscall = true;
       }
@@ -727,21 +730,27 @@ void IREmitter::emitSpecialNode(SDNode *Node) {
     Argument *CalledFuncArgs = CallFunc->arg_begin();
     std::vector<Value *> CallInstFuncArgs;
     CallInst *Inst = nullptr;
+    LLVM_DEBUG(dbgs()<<"brd 4.0\n");
     if (ArgNum > 0) {
+      LLVM_DEBUG(dbgs()<<"brd 5.0\n");
       Value *ArgVal = nullptr;
       const MachineFrameInfo &MFI = FuncInfo->MF->getFrameInfo();
       unsigned StackArg = 0; // Initialize argument size on stack to 0.
       if (ArgNum > 4) {
         StackArg = ArgNum - 4;
+        LLVM_DEBUG(dbgs()<<"brd 6.0\n");
 
         unsigned StackNum = MFI.getNumObjects() - 2;
         if (StackNum > StackArg)
           StackArg = StackNum;
       }
       for (unsigned i = 0; i < ArgNum; i++) {
-        if (i < 4)
+        LLVM_DEBUG(dbgs()<<"brd 7.0\n");
+        if (i < 4) {
+          LLVM_DEBUG(dbgs()<<"brd 8.0\n");
           ArgVal = FuncInfo->ArgValMap[ARM::R0 + i];
-        else {
+        } else {
+          LLVM_DEBUG(dbgs()<<"brd 9.0\n");
           const Value *StackAlloc =
               MFI.getObjectAllocation(StackArg - i - 4 + 1);
           ArgVal = IRB.CreateAlignedLoad(
@@ -750,6 +759,7 @@ void IREmitter::emitSpecialNode(SDNode *Node) {
         }
         if (IsSyscall && i < CallFunc->arg_size() &&
             ArgVal->getType() != CalledFuncArgs[i].getType()) {
+          LLVM_DEBUG(dbgs()<<"brd 10.0\n");
           CastInst *CInst = CastInst::Create(
               CastInst::getCastOpcode(ArgVal, false,
                                       CalledFuncArgs[i].getType(), false),

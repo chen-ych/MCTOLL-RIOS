@@ -143,24 +143,24 @@ void RISCV32FunctionPrototype::genParameterTypes(std::vector<Type *> &paramTypes
 /// Get all arguments types of current MachineFunction.
 bool RISCV32FunctionPrototype::isDefinedRegiser(unsigned reg,
                                             const MachineBasicBlock &mbb) {
-  // for (MachineBasicBlock::const_reverse_iterator ii = mbb.rbegin(),
-  //                                                ie = mbb.rend();
-  //      ii != ie; ++ii) {
-  //   const MachineInstr &mi = *ii;
-  //   for (MachineInstr::const_mop_iterator oi = mi.operands_begin(),
-  //                                         oe = mi.operands_end();
-  //        oi != oe; oi++) {
-  //     const MachineOperand &mo = *oi;
-  //     if (mo.isReg() && (mo.getReg() == reg)) {
-  //       // The return register must not be tied to another register.
-  //       // If it was, it should not be return register.
-  //       if (mo.isTied())
-  //         return false;
+   for (MachineBasicBlock::const_reverse_iterator ii = mbb.rbegin(),
+                                                  ie = mbb.rend();
+        ii != ie; ++ii) {
+     const MachineInstr &mi = *ii;
+     for (MachineInstr::const_mop_iterator oi = mi.operands_begin(),
+                                           oe = mi.operands_end();
+          oi != oe; oi++) {
+       const MachineOperand &mo = *oi;
+       if (mo.isReg() && (mo.getReg() == reg)) {
+         // The return register must not be tied to another register.
+         // If it was, it should not be return register.
+         if (mo.isTied())
+           return false;
 
-  //       return mo.isDef();
-  //     }
-  //   }
-  // }
+         return mo.isDef();
+       }
+     }
+  }
 
   return false;
 }
@@ -171,15 +171,18 @@ Type *RISCV32FunctionPrototype::genReturnType() {
   Type *retTy;
   retTy = Type::getVoidTy(*CTX);
   for (const MachineBasicBlock &mbb : *MF) {
+    LLVM_DEBUG(dbgs()<<"genReturnType 1\n");
     if (mbb.succ_empty()) {
-      if (isDefinedRegiser(RISCV::X10, mbb)) {
+      LLVM_DEBUG(dbgs()<<"genReturnType 2\n");
+      if (isDefinedRegiser(RISCV::X10, mbb) || isDefinedRegiser(RISCV::X11, mbb)) {
         // TODO: Need to identify data type, int, long, float or double.
+        LLVM_DEBUG(dbgs()<<"genReturnType 3\n");
         retTy = getDefaultType();
         break;
       }
     }
   }
-
+  LLVM_DEBUG(dbgs()<<*retTy<<"\n");
   return retTy;
 }
 

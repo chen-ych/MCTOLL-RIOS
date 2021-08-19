@@ -165,15 +165,18 @@ Type *ARMFunctionPrototype::genReturnType() {
   Type *retTy;
   retTy = Type::getVoidTy(*CTX);
   for (const MachineBasicBlock &mbb : *MF) {
+    LLVM_DEBUG(dbgs()<<"genReturnType 1\n");
     if (mbb.succ_empty()) {
+      LLVM_DEBUG(dbgs()<<"genReturnType 2\n");
       if (isDefinedRegiser(ARM::R0, mbb)) {
         // TODO: Need to identify data type, int, long, float or double.
+        LLVM_DEBUG(dbgs()<<"genReturnType 3\n");
         retTy = getDefaultType();
         break;
       }
     }
   }
-
+  LLVM_DEBUG(dbgs()<<*retTy<<"\n");
   return retTy;
 }
 

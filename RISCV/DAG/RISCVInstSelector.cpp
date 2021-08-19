@@ -224,7 +224,35 @@ void RISCVInstSelector::selectCode(SDNode *N) {
     replaceNode(N, Node);
   }
   break;
-  // /* ADC */
+  case RISCV::JAL: {
+    LLVM_DEBUG(dbgs()<< "JAL inst sel\n");
+    SDValue Func = N->getOperand(1);
+    SDValue LinkReg = N->getOperand(0);
+    RegisterSDNode* LinkRegPtr = static_cast<RegisterSDNode*>(LinkReg.getNode());
+    assert(LinkRegPtr->getReg() == RISCV::X1 && "JAL Link ret Addr not eq to X1, case uncovered!\n");
+    LLVM_DEBUG(Func.getNode()->dump());
+    SDNode *Node = nullptr;
+    /*
+    if (RegisterSDNode::classof(Func.getNode())) {
+      LLVM_DEBUG(dbgs()<< "JAL inst sel 1,0\n");
+      Func = FuncInfo->getValFromRegMap(Func);
+      Node =
+          CurDAG
+              ->getNode(ISD::BRIND, dl, getDefaultEVT(), Func, getMDOperand(N))
+              .getNode();
+    } else {      */
+    LLVM_DEBUG(dbgs()<< "JAL inst sel 2,0\n");
+    Node = CurDAG
+                ->getNode(EXT_RISCV32ISD::BRD, dl, getDefaultEVT(), Func,
+                          getMDOperand(N))
+                .getNode();
+    //}
+
+    FuncInfo->setValueByRegister(RISCV::X10, SDValue(Node, 0));
+    FuncInfo->NodeRegMap[Node] = RISCV::X10;
+    replaceNode(N, Node);
+  } break;
+  /* ADC */
   // case RISCV32::ADCrr:
   // case RISCV32::ADCri:
   // case RISCV32::ADCrsr:
@@ -496,28 +524,6 @@ void RISCVInstSelector::selectCode(SDNode *N) {
   //       CurDAG->getNode(ISD::BR, dl, getDefaultEVT(), BrBlock, getMDOperand(N))
   //           .getNode();
 
-  //   replaceNode(N, Node);
-  // } break;
-  // case RISCV32::BL:
-  // case RISCV32::BL_pred:
-  // case RISCV32::tBL: {
-  //   SDValue Func = N->getOperand(0);
-  //   SDNode *Node = nullptr;
-  //   if (RegisterSDNode::classof(Func.getNode())) {
-  //     Func = FuncInfo->getValFromRegMap(Func);
-  //     Node =
-  //         CurDAG
-  //             ->getNode(ISD::BRIND, dl, getDefaultEVT(), Func, getMDOperand(N))
-  //             .getNode();
-  //   } else {
-  //     Node = CurDAG
-  //                ->getNode(EXT_RISCV32ISD::BRD, dl, getDefaultEVT(), Func,
-  //                          getMDOperand(N))
-  //                .getNode();
-  //   }
-
-  //   FuncInfo->setValueByRegister(RISCV32::R0, SDValue(Node, 0));
-  //   FuncInfo->NodeRegMap[Node] = RISCV32::R0;
   //   replaceNode(N, Node);
   // } break;
   // case RISCV32::BLX:

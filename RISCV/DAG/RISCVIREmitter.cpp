@@ -687,15 +687,16 @@ void RISCVIREmitter::emitSDNode(SDNode *Node) {
 }
 
 void RISCVIREmitter::emitSpecialNode(SDNode *Node) {
-  // unsigned Opc = Node->getOpcode();
-  // Module &M = *MR->getModule();
+  unsigned Opc = Node->getOpcode();
+  Module &M = *MR->getModule();
 
-  // BasicBlock *BB = getBlock();
-  // BasicBlock *CurBB = getCurBlock();
-  // switch (Opc) {
-  // default:
-  //   // assert(false && "Unknown SDNode Type!");
-  //   break;
+  BasicBlock *BB = getBlock();
+  BasicBlock *CurBB = getCurBlock();
+  LLVM_DEBUG(dbgs()<< "At emit Special Node!!!!!!\n Opc=" <<Opc<<" PerID="<<Node->PersistentId << "\n");
+  switch (Opc) {
+  default:
+   //assert(false && "Unknown SDNode Type!");
+   break;
   // // case EXT_RISCV32ISD::BX_RET: {
   // //   Value *Ret = getIRValue(Node->getOperand(0));
   // //   if (!ConstantSDNode::classof(Node->getOperand(0).getNode()))
@@ -727,72 +728,93 @@ void RISCVIREmitter::emitSpecialNode(SDNode *Node) {
   //   }
   //   LLVM_FALLTHROUGH;
   // }
-  // // case EXT_RISCV32ISD::BRD: {
-  // //   // Get the function call Index.
-  // //   uint64_t Index = Node->getConstantOperandVal(0);
-  // //   // Get function from ModuleRaiser.
-  // //   Function *CallFunc = MR->getRaisedFunctionAt(Index);
-  // //   unsigned IFFuncArgNum = 0; // The argument number which gets from analyzing
-  // //                              // variadic function prototype.
-  // //   bool IsSyscall = false;
-  // //   if (CallFunc == nullptr) {
-  // //     // According MI to get BL instruction address.
-  // //     // uint64_t callAddr = DAGInfo->NPMap[Node]->InstAddr;
-  // //     uint64_t CallAddr = MR->getTextSectionAddress() +
-  // //                         getMCInstIndex(*(DAGInfo->NPMap[Node]->MI));
-  // //     Function *IndefiniteFunc = MR->getCallFunc(CallAddr);
-  // //     CallFunc = MR->getSyscallFunc(Index);
-  // //     if (CallFunc != nullptr && IndefiniteFunc != nullptr) {
-  // //       IFFuncArgNum = MR->getFunctionArgNum(CallAddr);
-  // //       IsSyscall = true;
-  // //     }
-  // //   }
-  // //   assert(CallFunc && "Failed to get called function!");
+  case EXT_RISCV32ISD::BRD: {
+    // Get the function call Index.
+    LLVM_DEBUG(dbgs()<<"brd 1.0\n");
+
+    uint64_t Index = Node->getConstantOperandVal(0);
+    // Get function from ModuleRaiser.
+    Function *CallFunc = MR->getRaisedFunctionAt(Index);
+    unsigned IFFuncArgNum = 0; // The argument number which gets from analyzing
+    // variadic function prototype.
+    bool IsSyscall = false;
+    LLVM_DEBUG(dbgs()<<"brd 1.1\n");
+    if (CallFunc == nullptr) {
+      // According MI to get BL instruction address.
+      // uint64_t callAddr = DAGInfo->NPMap[Node]->InstAddr;
+      LLVM_DEBUG(dbgs()<<"brd 2.0\n");
+      uint64_t CallAddr = MR->getTextSectionAddress() +
+      getMCInstIndex(*(DAGInfo->NPMap[Node]->MI));
+      Function *IndefiniteFunc = MR->getCallFunc(CallAddr);
+      CallFunc = MR->getSyscallFunc(Index);
+      if (CallFunc != nullptr && IndefiniteFunc != nullptr) {
+        LLVM_DEBUG(dbgs()<<"brd 2.1\n");
+        IFFuncArgNum = MR->getFunctionArgNum(CallAddr);
+        IsSyscall = true;
+      }
+      LLVM_DEBUG(dbgs()<<"brd 2.2\n");
+    }
+    assert(CallFunc && "Failed to get called function!");
   // //   // Get argument number from callee.
-  // //   unsigned ArgNum = CallFunc->arg_size();
-  // //   if (IFFuncArgNum > ArgNum)
-  // //     ArgNum = IFFuncArgNum;
-  // //   Argument *CalledFuncArgs = CallFunc->arg_begin();
-  // //   std::vector<Value *> CallInstFuncArgs;
-  // //   CallInst *Inst = nullptr;
-  // //   if (ArgNum > 0) {
-  // //     Value *ArgVal = nullptr;
-  // //     const MachineFrameInfo &MFI = FuncInfo->MF->getFrameInfo();
-  // //     unsigned StackArg = 0; // Initialize argument size on stack to 0.
-  // //     if (ArgNum > 4) {
-  // //       StackArg = ArgNum - 4;
+    unsigned ArgNum = CallFunc->arg_size();
+    LLVM_DEBUG(dbgs()<<"brd 3.2\n");
+    if (IFFuncArgNum > ArgNum)
+      ArgNum = IFFuncArgNum;
+    LLVM_DEBUG(dbgs()<<"brd 3.3\n");
+    Argument *CalledFuncArgs = CallFunc->arg_begin();
+    std::vector<Value *> CallInstFuncArgs;
+    CallInst *Inst = nullptr;
+    LLVM_DEBUG(dbgs()<<"brd 3.4\n");
+    if (ArgNum > 0) {
+      LLVM_DEBUG(dbgs()<<"brd 4.0\n");
+      Value *ArgVal = nullptr;
+      const MachineFrameInfo &MFI = FuncInfo->MF->getFrameInfo();
+      unsigned StackArg = 0; // Initialize argument size on stack to 0.
+      LLVM_DEBUG(dbgs()<<"brd 4.1\n");
+      if (ArgNum > 4) {
+        LLVM_DEBUG(dbgs()<<"brd 4.2\n");
+         StackArg = ArgNum - 4;
 
-  // //       unsigned StackNum = MFI.getNumObjects() - 2;
-  // //       if (StackNum > StackArg)
-  // //         StackArg = StackNum;
-  // //     }
-  // //     for (unsigned i = 0; i < ArgNum; i++) {
-  // //       if (i < 4)
-  // //         ArgVal = FuncInfo->ArgValMap[RISCV32::R0 + i];
-  // //       else {
-  // //         const Value *StackAlloc =
-  // //             MFI.getObjectAllocation(StackArg - i - 4 + 1);
-  // //         ArgVal = IRB.CreateAlignedLoad(
-  // //             const_cast<Value *>(StackAlloc),
-  // //             MaybeAlign(Log2(DLT->getPointerPrefAlignment())));
-  // //       }
-  // //       if (IsSyscall && i < CallFunc->arg_size() &&
-  // //           ArgVal->getType() != CalledFuncArgs[i].getType()) {
-  // //         CastInst *CInst = CastInst::Create(
-  // //             CastInst::getCastOpcode(ArgVal, false,
-  // //                                     CalledFuncArgs[i].getType(), false),
-  // //             ArgVal, CalledFuncArgs[i].getType());
-  // //         IRB.GetInsertBlock()->getInstList().push_back(CInst);
-  // //         ArgVal = CInst;
-  // //       }
-  // //       CallInstFuncArgs.push_back(ArgVal);
-  // //     }
-  // //     Inst = IRB.CreateCall(CallFunc, ArrayRef<Value *>(CallInstFuncArgs));
-  // //   } else
-  // //     Inst = IRB.CreateCall(CallFunc);
+         unsigned StackNum = MFI.getNumObjects() - 2;
+         if (StackNum > StackArg)
+           StackArg = StackNum;
+        LLVM_DEBUG(dbgs()<<"brd 4.3\n");
+      }
+      for (unsigned i = 0; i < ArgNum; i++) {
+          LLVM_DEBUG(dbgs()<<"brd 5.0\n");
+         if (i < 4)
+           ArgVal = FuncInfo->ArgValMap[RISCV::X10+ i];
+         else {
+            LLVM_DEBUG(dbgs()<<"brd 5.1\n");
+           const Value *StackAlloc =
+               MFI.getObjectAllocation(StackArg - i - 4 + 1);
+           ArgVal = IRB.CreateAlignedLoad(
+              const_cast<Value *>(StackAlloc),
+               MaybeAlign(Log2(DLT->getPointerPrefAlignment())));
+          LLVM_DEBUG(dbgs()<<"brd 5.2\n");
+         }
+         if (IsSyscall && i < CallFunc->arg_size() &&
+             ArgVal->getType() != CalledFuncArgs[i].getType()) {
+          LLVM_DEBUG(dbgs()<<"brd 5.3\n");
+           CastInst *CInst = CastInst::Create(
+               CastInst::getCastOpcode(ArgVal, false,
+                                       CalledFuncArgs[i].getType(), false),
+               ArgVal, CalledFuncArgs[i].getType());
+           IRB.GetInsertBlock()->getInstList().push_back(CInst);
+           ArgVal = CInst;
+          LLVM_DEBUG(dbgs()<<"brd 5.4\n");
+         }
+         CallInstFuncArgs.push_back(ArgVal);
+          LLVM_DEBUG(dbgs()<<"brd 5.6\n");
+       }
+       Inst = IRB.CreateCall(CallFunc, ArrayRef<Value *>(CallInstFuncArgs));
+          LLVM_DEBUG(dbgs()<<"brd 5.7\n");
+     } else
+       Inst = IRB.CreateCall(CallFunc);
 
-  // //   DAGInfo->setRealValue(Node, Inst);
-  // // } break;
+     DAGInfo->setRealValue(Node, Inst);
+          LLVM_DEBUG(dbgs()<<"brd 6\n");
+   } break;
   // case ISD::BRIND: {
   //   Value *Func = getIRValue(Node->getOperand(0));
   //   unsigned NumDests = Node->getNumOperands();
@@ -1320,5 +1342,5 @@ void RISCVIREmitter::emitSpecialNode(SDNode *Node) {
   //     FuncInfo->ArgValMap[FuncInfo->NodeRegMap[Node]] = Inst;
   //   }
   // } break;
-  // }
+  }
 }

@@ -55,7 +55,9 @@ void ARMSelectionDAGISel::selectBasicBlock() {
   // BasicBlock and each Value which is mapped with R0. In order to record
   // the return Value of each exit BasicBlock.
   Type *RTy = FuncInfo->Fn->getReturnType();
+  LLVM_DEBUG(dbgs()<<"\nReturnType=="<<*RTy<<" MBB->SuccSize()=="<<MBB->succ_size()<<"\n");
   if (RTy != nullptr && !RTy->isVoidTy() && MBB->succ_size() == 0) {
+    LLVM_DEBUG(dbgs() << "attempt to assign RetValMap\n");
     Instruction *TInst = dyn_cast<Instruction>(
         DAGInfo->getRealValue(FuncInfo->RegValMap[ARM::R0]));
     assert(TInst && "A def R0 was pointed to a non-instruction!!!");
@@ -127,9 +129,15 @@ bool ARMSelectionDAGISel::doSelection() {
   if (CurFn->getReturnType()) {
     PHINode *LPHI = PHINode::Create(FuncInfo->getCRF()->getReturnType(),
                                     FuncInfo->RetValMap.size(), "", LBB);
-    for (auto Pair : FuncInfo->RetValMap)
+    LLVM_DEBUG(dbgs()<<"RetValMap.size()=="<<FuncInfo->RetValMap.size()<<"\n");
+             
+    for (auto Pair : FuncInfo->RetValMap) {
+      LLVM_DEBUG(dbgs() << "\nAt auto Pair: FuncInfo->RetValMap\nfirst(BB):");
+      LLVM_DEBUG(Pair.first->dump());
+      LLVM_DEBUG(dbgs() << "\nSecond(Value):");
+      LLVM_DEBUG(Pair.second->dump());
       LPHI->addIncoming(Pair.second, Pair.first);
-
+    }
     ReturnInst::Create(CurFn->getContext(), LPHI, LBB);
   } else
     ReturnInst::Create(CurFn->getContext(), LBB);

@@ -37,7 +37,27 @@ bool RISCV32ModuleRaiser::collectDynamicRelocations() {
 
   return true;
 }
+// Get rodata instruction addr.
+uint64_t RISCV32ModuleRaiser::getArgNumInstrAddr(uint64_t callAddr) {
+  uint64_t InstArgCount = InstArgCollect.size();
+  if (InstArgCount == 0)
+    return InstArgCount;
+  for (uint64_t i = 0; i < InstArgCount; i++) {
+    if (InstArgCollect[i] > callAddr) {
+      return InstArgCollect[i - 1];
+    }
+  }
 
+  return InstArgCollect[InstArgCount - 1];
+}
+
+uint64_t RISCV32ModuleRaiser::getFunctionArgNum(uint64_t callAddr) {
+  uint64_t rodataAddr = getArgNumInstrAddr(callAddr);
+
+  if (rodataAddr == 0)
+    return rodataAddr;
+  return InstArgNumMap[rodataAddr];
+}
 
 #ifdef __cplusplus
 extern "C" {
