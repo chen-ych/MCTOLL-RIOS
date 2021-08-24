@@ -11,11 +11,8 @@ int func(int a, int b, int c){
 
 #include<stdio.h>
 
-int fn( int x ) {
-	return x;
-}
 
 int main(int argc, int* argv[]){
-	int i = fn(5);
-	return i;
+	printf("hello world\n");
+	return 0;
 }

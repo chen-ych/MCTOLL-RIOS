@@ -224,6 +224,38 @@ void RISCVInstSelector::selectCode(SDNode *N) {
     replaceNode(N, Node);
   }
   break;
+  case RISCV::LUI: {
+    LLVM_DEBUG(dbgs()<< "LUI detected\n");
+    SDValue Rd = N->getOperand(0);
+    SDValue Rn = N->getOperand(1);
+    LLVM_DEBUG(dbgs()<<"\nLUI::Rd=");
+    LLVM_DEBUG(Rd.getNode()->print(dbgs(),CurDAG));
+    LLVM_DEBUG(dbgs()<<"\nLUI::Rn=");
+    LLVM_DEBUG(Rn.getNode()->print(dbgs(),CurDAG));
+    LLVM_DEBUG(dbgs()<<"\n");
+    if(ConstantSDNode::classof(Rn.getNode())) {
+      ConstantSDNode* CstNode = static_cast<ConstantSDNode*>(Rn.getNode());
+      APInt tmp = CstNode->getAPIntValue().operator<<(12);
+      SDValue TmpSdvalue = CurDAG->getConstant(tmp,dl,getDefaultEVT());
+      LLVM_DEBUG(dbgs()<<"\nLUI::Rn_new=");
+      LLVM_DEBUG(TmpSdvalue.getNode()->print(dbgs(),CurDAG));
+      LLVM_DEBUG(dbgs()<<"\n");
+      SDNode* Node = CurDAG->getNode(ISD::ADD,dl,getDefaultEVT(),
+                    CurDAG->getConstant(0,dl,getDefaultEVT()),TmpSdvalue,
+                    getMDOperand(N))
+                    .getNode();
+      LLVM_DEBUG(dbgs()<<"\nNode=");
+      LLVM_DEBUG(Node->print(dbgs(),CurDAG));
+      LLVM_DEBUG(dbgs()<<"\n");
+      recordDefinition(Rd.getNode(),Node);
+      replaceNode(N,Node);
+
+
+    } else {
+      assert(0 && "error format in LUI!\n");
+    }
+    
+  } break;
   case RISCV::JAL: {
     LLVM_DEBUG(dbgs()<< "JAL inst sel\n");
     SDValue Func = N->getOperand(1);
@@ -252,6 +284,7 @@ void RISCVInstSelector::selectCode(SDNode *N) {
     FuncInfo->NodeRegMap[Node] = RISCV::X10;
     replaceNode(N, Node);
   } break;
+
   /* ADC */
   // case RISCV32::ADCrr:
   // case RISCV32::ADCri:
