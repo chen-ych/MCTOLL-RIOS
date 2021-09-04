@@ -730,9 +730,9 @@ void RISCVIREmitter::emitSpecialNode(SDNode *Node) {
   // }
   case EXT_RISCV32ISD::BRD: {
     // Get the function call Index.
-    LLVM_DEBUG(dbgs()<<"brd 1.0\n");
 
     uint64_t Index = Node->getConstantOperandVal(0);
+    LLVM_DEBUG(dbgs()<<"brd 1.0 Index=" <<  Index<< "\n");
     // Get function from ModuleRaiser.
     Function *CallFunc = MR->getRaisedFunctionAt(Index);
     unsigned IFFuncArgNum = 0; // The argument number which gets from analyzing

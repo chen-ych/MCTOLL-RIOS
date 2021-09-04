@@ -79,6 +79,7 @@ uint64_t getLoadAlignProgramHeader(const ELFFile<ELFT> *Obj) {
 /// Create function for external function.
 uint64_t ARMMIRevising::getCalledFunctionAtPLTOffset(uint64_t PLTEndOff,
                                                      uint64_t CallAddr) {
+  LLVM_DEBUG(dbgs() << "\n@getCalledFunctionAtPLTOffset\n");
   const ELF32LEObjectFile *Elf32LEObjFile =
       dyn_cast<ELF32LEObjectFile>(MR->getObjectFile());
   assert(Elf32LEObjFile != nullptr &&
@@ -127,6 +128,7 @@ uint64_t ARMMIRevising::getCalledFunctionAtPLTOffset(uint64_t PLTEndOff,
       unsigned Bits = OpdAddIP.getImm() & 0xFF;
       unsigned Rot = (OpdAddIP.getImm() & 0xF00) >> 7;
       int64_t P_Align = static_cast<int64_t>(ARM_AM::rotr32(Bits, Rot));
+      LLVM_DEBUG(dbgs()<<"PLTEndOff="<<PLTEndOff<<",opdaddid.gettimm()="<<OpdAddIP.getImm()<<",Bits="<<Bits<<",rot="<<Rot<<",Palign="<<P_Align<<"\n");
 
       MCInst Inst;
       uint64_t InstSz;
@@ -147,6 +149,7 @@ uint64_t ARMMIRevising::getCalledFunctionAtPLTOffset(uint64_t PLTEndOff,
       uint64_t Index = Operand.getImm();
 
       uint64_t GotPltRelocOffset = PLTEndOff + Index + P_Align + 8;
+      LLVM_DEBUG(dbgs()<<"Index="<<Index<<",GotPltRelocOffset="<<GotPltRelocOffset<<"\n");
       const RelocationRef *GotPltReloc =
           MR->getDynRelocAtOffset(GotPltRelocOffset);
       assert(GotPltReloc != nullptr &&
@@ -205,6 +208,7 @@ void ARMMIRevising::relocateBranch(MachineInstr &MInst) {
     if (CallTargetOffset < 0 || !MCIR->isMCInstInRange(CallTargetOffset)) {
       Function *CalledFunc = nullptr;
       uint64_t MCInstSize = MCIR->getMCInstSize(MCInstOffset);
+      LLVM_DEBUG(dbgs()<<"MCInstSize==" <<MCInstSize << "\n");
       uint64_t Index = 1;
       CalledFunc = MR->getRaisedFunctionAt(CallTargetIndex);
       if (CalledFunc == nullptr) {

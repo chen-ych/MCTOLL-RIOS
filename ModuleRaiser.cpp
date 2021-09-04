@@ -12,15 +12,16 @@
 #include "MachineInstructionRaiser.h"
 #include "llvm/IR/Instructions.h"
 #include "llvm/Support/Debug.h"
-
 #define DEBUG_TYPE "mctoll"
 
 Function *ModuleRaiser::getRaisedFunctionAt(uint64_t Index) const {
   int64_t TextSecAddr = getTextSectionAddress();
-  for (auto MFR : mfRaiserVector)
+  LLVM_DEBUG(dbgs() << "-------------------getRaisedFunctionAt------------\nTextSecAddr =" << TextSecAddr << "\n");
+  for (auto MFR : mfRaiserVector) {
+    LLVM_DEBUG(dbgs() << "MFR->getMCInstRaiser->getFuncStart=" <<MFR->getMCInstRaiser()->getFuncStart());
     if ((MFR->getMCInstRaiser()->getFuncStart() + TextSecAddr) == Index)
       return MFR->getRaisedFunction();
-
+  }
   return nullptr;
 }
 

@@ -79,115 +79,118 @@ uint64_t getLoadAlignProgramHeader(const ELFFile<ELFT> *Obj) {
 /// Create function for external function.
 uint64_t RISCV32MIRevising::getCalledFunctionAtPLTOffset(uint64_t PLTEndOff,
                                                      uint64_t CallAddr) {
-  return 0;
-  // To do : fix plt table
+  LLVM_DEBUG(dbgs() << "\n@getCalledFunctionAtPLTOffset\n<<PltEndOff="<<PLTEndOff<<",calladdr="<<CallAddr<<"\n");
+  
+  //return 0;
+  /*
+  To do : fix plt table
 
-  // For arm 
-  /*    10290:       e28fc600        add     ip, pc, #0, 12
-        10294:       e28cca10        add     ip, ip, #16, 20 ; 0x10000
-        10298:       e5bcf348        ldr     pc, [ip, #840]! ; 0x348
+  For arm 
+     10290:       e28fc600        add     ip, pc, #0, 12
+     10294:       e28cca10        add     ip, ip, #16, 20 ; 0x10000
+     10298:       e5bcf348        ldr     pc, [ip, #840]! ; 0x348
   */
-  // const ELF32LEObjectFile *Elf32LEObjFile =
-  //     dyn_cast<ELF32LEObjectFile>(MR->getObjectFile());
-  // assert(Elf32LEObjFile != nullptr &&
-  //        "Only 32-bit ELF binaries supported at present!");
-  // unsigned char ExecType = Elf32LEObjFile->getELFFile().getHeader().e_type;
+  const ELF32LEObjectFile *Elf32LEObjFile =
+      dyn_cast<ELF32LEObjectFile>(MR->getObjectFile());
+  assert(Elf32LEObjFile != nullptr &&
+         "Only 32-bit ELF binaries supported at present!");
+  unsigned char ExecType = Elf32LEObjFile->getELFFile().getHeader().e_type;
 
-  // assert((ExecType == ELF::ET_DYN) || (ExecType == ELF::ET_EXEC));
-  // // Find the section that contains the offset. That must be the PLT section
-  // for (section_iterator SecIter : Elf32LEObjFile->sections()) {
-  //   uint64_t SecStart = SecIter->getAddress();
-  //   uint64_t SecEnd = SecStart + SecIter->getSize();
-  //   if ((SecStart <= PLTEndOff) && (SecEnd >= PLTEndOff)) {
-  //     StringRef SecName;
-  //     if (auto NameOrErr = SecIter->getName())
-  //       SecName = *NameOrErr;
-  //     else {
-  //       consumeError(NameOrErr.takeError());
-  //       assert(false && "Failed to get section name with PLT offset");
-  //     }
-  //     if (SecName.compare(".plt") != 0) {
-  //       assert(false && "Unexpected section name of PLT offset");
-  //     }
+  assert((ExecType == ELF::ET_DYN) || (ExecType == ELF::ET_EXEC));
+  // Find the section that contains the offset. That must be the PLT section
+  for (section_iterator SecIter : Elf32LEObjFile->sections()) {
+    uint64_t SecStart = SecIter->getAddress();
+    uint64_t SecEnd = SecStart + SecIter->getSize();
+    if ((SecStart <= PLTEndOff) && (SecEnd >= PLTEndOff)) {
+      StringRef SecName;
+      if (auto NameOrErr = SecIter->getName())
+        SecName = *NameOrErr;
+      else {
+        consumeError(NameOrErr.takeError());
+        assert(false && "Failed to get section name with PLT offset");
+      }
+      if (SecName.compare(".plt") != 0) {
+        assert(false && "Unexpected section name of PLT offset");
+      }
 
-  //     auto StrOrErr = SecIter->getContents();
-  //     assert(StrOrErr && "Failed to get the content of section!");
-  //     auto SecData = *StrOrErr;
-  //     ArrayRef<uint8_t> Bytes(reinterpret_cast<const uint8_t *>(SecData.data()),
-  //                             SecData.size());
+      auto StrOrErr = SecIter->getContents();
+      assert(StrOrErr && "Failed to get the content of section!");
+      auto SecData = *StrOrErr;
+      ArrayRef<uint8_t> Bytes(reinterpret_cast<const uint8_t *>(SecData.data()),
+                              SecData.size());
 
-  //     MCInst InstAddIP;
-  //     uint64_t InstAddIPSz;
-  //     bool Success = MR->getMCDisassembler()->getInstruction(
-  //         InstAddIP, InstAddIPSz, Bytes.slice(PLTEndOff + 4 - SecStart),
-  //         PLTEndOff + 4, nulls());
-  //     assert(Success && "Failed to disassemble instruction in PLT");
+      MCInst InstAUIPC;
+      uint64_t InstAUIPCSz;
+      bool Success = MR->getMCDisassembler()->getInstruction(
+          InstAUIPC, InstAUIPCSz , Bytes.slice(PLTEndOff - SecStart),
+          PLTEndOff , nulls());
+      assert(Success && "Failed to disassemble instruction in PLT");
+      LLVM_DEBUG(dbgs()<<"InstAUIPC="<<InstAUIPC<<"\n");
+      unsigned int OpcAUIPC = InstAUIPC.getOpcode();
+     // MCInstrDesc MCIDAddIP = MR->getMCInstrInfo()->get(OpcAddIP);
 
-  //     unsigned int OpcAddIP = InstAddIP.getOpcode();
-  //     MCInstrDesc MCIDAddIP = MR->getMCInstrInfo()->get(OpcAddIP);
+      if (OpcAUIPC != RISCV::AUIPC ) {
+        assert(false && "Failed to find function entry from .plt.");
+      }
 
-  //     if (OpcAddIP != RISCV::ADD && (MCIDAddIP.getNumOperands() != 6)) {
-  //       assert(false && "Failed to find function entry from .plt.");
-  //     }
+      MCOperand OpdAUIPC= InstAUIPC.getOperand(1);
+      assert(OpdAUIPC.isImm() && "Unexpected immediate for offset.");
+      unsigned Bits = OpdAUIPC.getImm() & 0xFFFFF;
+      int64_t RipOffset = (Bits << 12) + PLTEndOff;//static_cast<int64_t>(RISCV32_AM::rotr32(Bits, Rot));
 
-  //     MCOperand OpdAddIP = InstAddIP.getOperand(2);
-  //     assert(OpdAddIP.isImm() && "Unexpected immediate for offset.");
-  //     unsigned Bits = OpdAddIP.getImm() & 0xFF;
-  //     unsigned Rot = (OpdAddIP.getImm() & 0xF00) >> 7;
-  //     int64_t P_Align = static_cast<int64_t>(RISCV32_AM::rotr32(Bits, Rot));
+      MCInst Inst;
+      uint64_t InstSz;
+      Success = MR->getMCDisassembler()->getInstruction(
+          Inst, InstSz, Bytes.slice(PLTEndOff + 4 - SecStart), PLTEndOff + 4,
+          nulls());
+      assert(Success && "Failed to disassemble instruction in PLT");
+      unsigned int Opcode = Inst.getOpcode();
+      MCInstrDesc MCID = MR->getMCInstrInfo()->get(Opcode);
+/*
+      if (Opcode != RISCV32::LDRi12 && (MCID.getNumOperands() != 6)) {
+        assert(false && "Failed to find function entry from .plt.");
+      }*/
+      LLVM_DEBUG(dbgs()<<"LW Inst="<<Inst << "\n");
+      MCOperand Operand = Inst.getOperand(2);
+      assert(Operand.isImm() && "Unexpected immediate for offset.");
 
-  //     MCInst Inst;
-  //     uint64_t InstSz;
-  //     Success = MR->getMCDisassembler()->getInstruction(
-  //         Inst, InstSz, Bytes.slice(PLTEndOff + 8 - SecStart), PLTEndOff + 8,
-  //         nulls());
-  //     assert(Success && "Failed to disassemble instruction in PLT");
-  //     unsigned int Opcode = Inst.getOpcode();
-  //     MCInstrDesc MCID = MR->getMCInstrInfo()->get(Opcode);
+      uint64_t Index = Operand.getImm();
 
-  //     if (Opcode != RISCV32::LDRi12 && (MCID.getNumOperands() != 6)) {
-  //       assert(false && "Failed to find function entry from .plt.");
-  //     }
+      uint64_t GotPltRelocOffset = RipOffset+ Index;
+      LLVM_DEBUG(dbgs()<<"LW Index="<<Index<< ",gotpltrelocoffset="<<GotPltRelocOffset<<"\n");
+      const RelocationRef *GotPltReloc =
+          MR->getDynRelocAtOffset(GotPltRelocOffset);
+      assert(GotPltReloc != nullptr &&
+             "Failed to get dynamic relocation for jmp target of PLT entry");
 
-  //     MCOperand Operand = Inst.getOperand(3);
-  //     assert(Operand.isImm() && "Unexpected immediate for offset.");
+      //assert((GotPltReloc->getType() == ELF::R_RISCV32_JUMP_SLOT) &&
+        //     "Unexpected relocation type for PLT jmp instruction");
+      symbol_iterator CalledFuncSym = GotPltReloc->getSymbol();
+      assert(CalledFuncSym != Elf32LEObjFile->symbol_end() &&
+             "Failed to find relocation symbol for PLT entry");
+      Expected<StringRef> CalledFuncSymName = CalledFuncSym->getName();
+      assert(CalledFuncSymName &&
+             "Failed to find symbol associated with dynamic "
+             "relocation of PLT jmp target.");
+      Expected<uint64_t> CalledFuncSymAddr = CalledFuncSym->getAddress();
+      assert(CalledFuncSymAddr &&
+             "Failed to get called function address of PLT entry");
 
-  //     uint64_t Index = Operand.getImm();
-
-  //     uint64_t GotPltRelocOffset = PLTEndOff + Index + P_Align + 8;
-  //     const RelocationRef *GotPltReloc =
-  //         MR->getDynRelocAtOffset(GotPltRelocOffset);
-  //     assert(GotPltReloc != nullptr &&
-  //            "Failed to get dynamic relocation for jmp target of PLT entry");
-
-  //     assert((GotPltReloc->getType() == ELF::R_RISCV32_JUMP_SLOT) &&
-  //            "Unexpected relocation type for PLT jmp instruction");
-  //     symbol_iterator CalledFuncSym = GotPltReloc->getSymbol();
-  //     assert(CalledFuncSym != Elf32LEObjFile->symbol_end() &&
-  //            "Failed to find relocation symbol for PLT entry");
-  //     Expected<StringRef> CalledFuncSymName = CalledFuncSym->getName();
-  //     assert(CalledFuncSymName &&
-  //            "Failed to find symbol associated with dynamic "
-  //            "relocation of PLT jmp target.");
-  //     Expected<uint64_t> CalledFuncSymAddr = CalledFuncSym->getAddress();
-  //     assert(CalledFuncSymAddr &&
-  //            "Failed to get called function address of PLT entry");
-
-  //     if (CalledFuncSymAddr.get() == 0) {
-  //       // Set CallTargetIndex for plt offset to map undefined function symbol
-  //       // for emit CallInst use.
-  //       Function *CalledFunc =
-  //           ExternalFunctions::Create(*CalledFuncSymName, *MR);
-  //       // Bail out if function prototype is not available
-  //       if (!CalledFunc)
-  //         exit(-1);
-  //       MR->setSyscallMapping(PLTEndOff, CalledFunc);
-  //       MR->fillInstAddrFuncMap(CallAddr, CalledFunc);
-  //     }
-  //     return CalledFuncSymAddr.get();
-  //   }
-  // }
-  // return 0;
+      if (CalledFuncSymAddr.get() == 0) {
+        // Set CallTargetIndex for plt offset to map undefined function symbol
+        // for emit CallInst use.
+        Function *CalledFunc =
+            ExternalFunctions::Create(*CalledFuncSymName, *MR);
+        // Bail out if function prototype is not available
+        if (!CalledFunc)
+          exit(-1);
+        MR->setSyscallMapping(PLTEndOff, CalledFunc);
+        MR->fillInstAddrFuncMap(CallAddr, CalledFunc);
+      }
+      return CalledFuncSymAddr.get();
+    }
+  }
+  return 0;
 }
 
 /// Relocate call branch instructions in object files.
